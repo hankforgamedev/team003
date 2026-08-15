@@ -168,12 +168,31 @@ const answer = await ask(docs, question, { provider });
 npm install @anthropic-ai/bedrock-sdk
 ```
 
+### 真實 AWS 整合驗證
+
+專案附有一支 opt-in 整合測試，不會在一般 `npm test` 裡偷打 AWS 或產生費用。
+它會依序驗證：S3Store 真實寫入／讀回、Claude 回答、Titan embedding。
+
+```powershell
+$env:AWS_REGION = 'us-east-1'
+$env:KB_S3_BUCKET = 'your-existing-test-bucket'
+npm run test:aws
+```
+
+S3 使用每次唯一的 `codex-integration-tests/...` key，成功或失敗都會在 `finally`
+刪除，不會覆蓋正式的 `knowledge-base.json`。若要除錯並保留物件，才明確設定
+`$env:KEEP_AWS_TEST_OBJECT = '1'`。模型可用 `BEDROCK_CLAUDE_MODEL` 與
+`BEDROCK_EMBED_MODEL` 覆寫；預設分別沿用模組內建的 Sonnet 4.5 與 Titan V2。
+
 幾個關鍵細節：
 
-- **Bedrock 的 model id 帶 `anthropic.` 前綴**（`anthropic.claude-opus-5`），
-  跟第一方 API 的 `claude-opus-5` 不同，寫錯會 400。
-- 用 `effort: 'low'` —— 知識庫問答是「照著 context 講清楚」，不需要深度推理，
-  這樣省 token 也省延遲。
+- 預設使用 Bedrock Runtime 的 US 跨區 Sonnet 4.5：
+  `us.anthropic.claude-sonnet-4-5-20250929-v1:0`。這條路徑的帳號覆蓋率較高。
+- 也支援 Mantle 新模型（例如 `anthropic.claude-sonnet-5`／
+  `anthropic.claude-opus-5`）。`endpoint: 'auto'` 會依 model id 自動選 Runtime
+  或 Mantle；只有特殊部署才需要手動指定 `endpoint`。
+- Mantle 新模型使用 `effort: 'low'` —— 知識庫問答只需照 context 說清楚，
+  可以省 token 與延遲。Runtime 舊模型會自動略過這個 Mantle 專用參數。
 - 這兩個 AWS 套件是 **lazy import**，沒安裝不影響其他功能，
   前端 bundle 也不會把 AWS SDK 打包進去。
 
@@ -355,7 +374,7 @@ import { CommandPalette, usePaletteHotkey } from '@sales-next/knowledge-base/rea
 
 ## 現況
 
-已驗證（`npm test`，53 項全過）：
+已驗證（`npm test`，54 項全過）：
 
 - 路徑正規化、`null` 不會被當成根目錄、資料夾樹（含中間層不斷裂）、
   未歸檔不混進樹、搬資料夾不碰未歸檔的
@@ -375,9 +394,11 @@ import { CommandPalette, usePaletteHotkey } from '@sales-next/knowledge-base/rea
 - **S3Store：物件不存在視為空知識庫、寫入格式、讀寫往返、
   壞掉的 JSON 不會開不起來、5 筆會議測資完整跑一輪**
 
-尚未在真實 AWS 環境跑過：`createBedrockProvider` 和 `createBedrockEmbedder`
-的網路呼叫路徑（型別與降級邏輯有測試，實際 Bedrock 回應沒有）。
-接上去的第一件事就是打一次真實請求確認。
+真實 AWS 網路路徑請用 `npm run test:aws` 驗證；一般 `npm test` 只跑零成本、
+可離線重現的測試，不會因為開發者沒有 AWS 權限而失敗。
+
+2026-08-15 已在 `us-east-1` 實測通過完整路徑：S3 寫入／讀回／刪除、
+Sonnet 4.5 回答，以及 Titan V2 產生 1024 維 embedding。
 
 其他已知限制：
 
