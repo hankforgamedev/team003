@@ -13,9 +13,18 @@
 
 核心層零依賴、框架無關，可以獨立使用，也可以 import 進 Sales Next。
 
+> 新增：伺服器端的 LINE／Google Calendar 進料 adapter 位於
+> `@sales-next/knowledge-base/integrations`。它們只負責把來源資料可靠地送進
+> 既有 raw pipeline，不把 CRM 或知識庫合併邏輯塞進 connector。部署邊界與
+> 真實 LINE 驗收流程見 [`spec.md`](./spec.md)。
+>
+> `customer-folder-router` 會在黑盒子完成後，將同一筆 LINE 的 raw、transcript
+> 與 CRM 複製到 `customers/<公司名>/line/{raw,transcripts,crm}/`。無法辨識的
+> 身分會以不可逆匿名鍵分開放進 `customers/_unassigned/contact-*/line/`。
+
 ```bash
 npm run typecheck   # 型別檢查
-npm test            # 煙霧測試（19 項）
+npm test            # 核心與整合煙霧測試
 ```
 
 ---

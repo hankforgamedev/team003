@@ -1,0 +1,37 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: team003 customer-folder router for LINE pipeline artifacts
+
+Parameters:
+  PipelineBucket:
+    Type: String
+    Default: taoyuan-hsinchu2
+
+Resources:
+  CustomerFolderRouter:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: customer-folder-router
+      Runtime: nodejs22.x
+      Handler: index.handler
+      CodeUri: ./customer-router-package/
+      MemorySize: 128
+      Timeout: 20
+      Environment:
+        Variables:
+          PIPELINE_BUCKET: !Ref PipelineBucket
+          SOURCE_PREFIX: async-pipeline
+          CUSTOMER_PREFIX: customers
+          IDENTITY_MAP_KEY: async-pipeline/config/customer-map.json
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action: s3:GetObject
+              Resource:
+                - !Sub 'arn:${AWS::Partition}:s3:::${PipelineBucket}/async-pipeline/raw/*'
+                - !Sub 'arn:${AWS::Partition}:s3:::${PipelineBucket}/async-pipeline/transcripts/*'
+                - !Sub 'arn:${AWS::Partition}:s3:::${PipelineBucket}/async-pipeline/crm/*'
+                - !Sub 'arn:${AWS::Partition}:s3:::${PipelineBucket}/async-pipeline/config/customer-map.json'
+            - Effect: Allow
+              Action: s3:PutObject
+              Resource: !Sub 'arn:${AWS::Partition}:s3:::${PipelineBucket}/customers/*'
