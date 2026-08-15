@@ -72,14 +72,22 @@ export function StageBadge({ stage }: { stage: Stage }) {
   );
 }
 
-export function Chip({ children, tone = "neutral" }: { children: ReactNode; tone?: "neutral" | "blue" | "purple" | "warn" }) {
+export function Chip({
+  children,
+  tone = "neutral",
+  className = "",
+}: {
+  children: ReactNode;
+  tone?: "neutral" | "blue" | "purple" | "warn";
+  className?: string;
+}) {
   const cls = {
     neutral: "bg-bg text-ink-2",
     blue: "bg-primary-soft text-primary",
     purple: "bg-primary-soft text-primary",
     warn: "bg-warn-soft text-warn",
   }[tone];
-  return <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${cls}`}>{children}</span>;
+  return <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${cls} ${className}`}>{children}</span>;
 }
 
 export function EmptyState({ title, hint, action }: { title: string; hint?: string; action?: ReactNode }) {

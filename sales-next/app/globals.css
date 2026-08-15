@@ -114,3 +114,15 @@ textarea:focus-visible {
 .scroll-slim::-webkit-scrollbar { width: 6px; height: 6px; }
 .scroll-slim::-webkit-scrollbar-thumb { background: #999999; border-radius: 999px; }
 .scroll-slim::-webkit-scrollbar-track { background: transparent; }
+
+/* 會議卡：讓品牌藍在列表掃視時真正形成視覺錨點。 */
+.meeting-chip-strong {
+  background: var(--color-primary);
+  color: #fff;
+}
+
+.meeting-chip-soft {
+  background: color-mix(in srgb, var(--color-primary) 18%, var(--color-surface));
+  color: var(--color-primary);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-primary) 28%, transparent);
+}
