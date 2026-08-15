@@ -99,40 +99,62 @@ const DEMO_MEETING: MeetingJson = {
   },
 };
 
+const MEMO_PRICING = `# 2026 下半年定價調整備忘
+
+自 9 月起年約基準價由每月 6.5 萬調整為 7 萬。
+既有客戶續約時沿用原價至合約到期，不溯及既往。
+
+調價期間如遇客戶議價，折扣授權額度不變，仍依原 SOP 辦理。`;
+
 interface SeedDoc {
   title: string;
   body: string;
-  path: string;
+  /** `null` = 刻意不歸檔，用來示範兩套系統可以不同步。 */
+  path: string | null;
+  /** `[]` = 刻意不標籤。 */
   tags: string[];
   pinned?: boolean;
 }
 
+/**
+ * 示範資料刻意涵蓋四種分類狀態，讓「兩套系統各自獨立」在畫面上看得出來：
+ * 兩邊都有、只歸檔、只標籤、兩邊都沒有。
+ */
 const SEED_DOCS: SeedDoc[] = [
+  // 兩套系統都分類了
   {
     title: '報價與折扣授權 SOP',
     body: SOP_DISCOUNT,
     path: '/公司知識/SOP',
-    tags: ['SOP', '報價', '折扣'],
+    tags: ['報價', '折扣'],
     pinned: true,
-  },
-  {
-    title: '專案交接與上線流程 SOP',
-    body: SOP_HANDOVER,
-    path: '/公司知識/SOP',
-    tags: ['SOP', '交付'],
   },
   {
     title: '常見問題：合約與退費',
     body: FAQ_REFUND,
     path: '/公司知識/FAQ',
-    tags: ['FAQ', '合約', '退貨'],
+    tags: ['合約', '退貨', '付款'],
   },
   {
     title: '服務方案與定價',
     body: CATALOG,
     path: '/公司知識/產品型錄',
-    tags: ['產品', '報價', '合約'],
+    tags: ['報價', '合約'],
     pinned: true,
+  },
+  // 只歸檔、沒標籤 —— 在標籤視角看不到，會出現在「未標記」
+  {
+    title: '專案交接與上線流程 SOP',
+    body: SOP_HANDOVER,
+    path: '/公司知識/SOP',
+    tags: [],
+  },
+  // 只標籤、沒歸檔 —— 在資料夾樹看不到，會出現在「未歸檔」
+  {
+    title: '2026 下半年定價調整備忘',
+    body: MEMO_PRICING,
+    path: null,
+    tags: ['報價', '合約'],
   },
 ];
 

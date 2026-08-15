@@ -1,34 +1,41 @@
-import type { DocType, KnowledgeDoc } from './types.js';
-import { normalizePath } from './taxonomy.js';
+import type { DocType, KnowledgeDoc, TaxonomyMode } from './types.js';
+import { activeKinds, normalizePath } from './taxonomy.js';
 
 /**
- * 自動歸檔：從標題和內文猜出這份知識該放哪個資料夾、帶哪些標籤。
+ * 自動分類。
  *
- * 這是 demo 的亮點 —— 使用者上傳一份 PDF，AI 直接說「我把它放進
- * 公司知識／SOP，並標上『報價』『折扣』」，使用者按一下確認就好。
+ * 因為資料夾和標籤是**兩套獨立系統**，這裡就是兩個各自獨立的分類器：
  *
- * 規則引擎是**確定性**的：同一份文件永遠得到同一個結果，不需要網路、
- * 不會產生幻覺，demo 時不會出意外。`suggestWithLlm`（在 qa.ts）可以在
- * 有 Bedrock 時疊上去做語意分類，猜不到就回落到這裡。
+ *   - `classifyIntoFolder()`：判斷「這是什麼**種類**的文件」→ SOP／FAQ／型錄
+ *   - `classifyIntoTags()`：判斷「這份文件在講**什麼主題**」→ 報價／折扣／合約…
+ *
+ * 兩者用不同的規則、算各自的把握度、給各自的理由，互不參考。
+ * 一份文件可能歸檔成功但標不出標籤（放進 SOP 但講的主題規則沒收錄），
+ * 也可能標得出標籤但歸不了檔 —— 這是刻意允許的結果，不是失敗。
  */
 
-export interface Classification {
-  path: string;
-  tags: string[];
+/** 單一系統的分類結果。 */
+export interface FolderClassification {
+  /** `null` 代表猜不出來，維持未歸檔。 */
+  path: string | null;
   docType: DocType;
-  /** 0–1，規則命中的強度。低於 0.4 時 UI 應該明顯提示「請確認」。 */
+  /** 0–1。低於 0.4 時 UI 應該明顯提示「請確認」。 */
   confidence: number;
-  /** 命中的理由，直接顯示給使用者看，讓自動歸檔是可解釋的。 */
+  /** 命中的理由，直接顯示給使用者看，讓自動分類是可解釋的。 */
   reasons: string[];
 }
 
-interface Rule {
-  docType: DocType;
-  path: string;
-  /** 命中任一關鍵字就算。 */
-  keywords: string[];
-  /** 命中時要補的標籤。 */
+export interface TagClassification {
+  /** 空陣列代表猜不出來，維持未標記。 */
   tags: string[];
+  confidence: number;
+  reasons: string[];
+}
+
+/** 兩套系統各跑一次的合併結果。 */
+export interface Classification {
+  folder: FolderClassification;
+  tag: TagClassification;
 }
 
 /**
@@ -40,127 +47,182 @@ export const DEFAULT_FOLDERS = [
   '/公司知識/FAQ',
   '/公司知識/產品型錄',
   '/客戶知識',
-  '/待整理',
 ] as const;
 
-/** 自動歸檔猜不出來時的去處。刻意不丟進根目錄，避免根目錄變垃圾場。 */
-export const INBOX = '/待整理';
+/* ------------------------------------------------------------------ */
+/* 分類器一：資料夾（文件種類）                                          */
+/* ------------------------------------------------------------------ */
 
-const RULES: Rule[] = [
+interface FolderRule {
+  docType: DocType;
+  path: string;
+  keywords: string[];
+}
+
+const FOLDER_RULES: FolderRule[] = [
   {
     docType: 'sop',
     path: '/公司知識/SOP',
     keywords: [
       'SOP', '標準作業', '流程', '步驟', '作業程序', '規範', '準則',
-      '簽核', '授權', '權限', 'workflow',
+      '簽核', '授權', 'workflow',
     ],
-    tags: ['SOP'],
   },
   {
     docType: 'faq',
     path: '/公司知識/FAQ',
     keywords: ['FAQ', '常見問題', '問答', 'Q&A', 'Q＆A', '怎麼辦', '如何處理'],
-    tags: ['FAQ'],
   },
   {
     docType: 'catalog',
     path: '/公司知識/產品型錄',
     keywords: [
-      '型錄', '產品', '方案', '規格', '報價', '價目', '定價', '費率',
+      '型錄', '產品', '方案', '規格', '價目', '定價', '費率',
       '服務內容', 'pricing', 'catalog',
     ],
-    tags: ['產品'],
   },
 ];
 
-/** 主題標籤：不影響資料夾，只是額外的檢索面向。 */
-const TOPIC_TAGS: Array<{ tag: string; keywords: string[] }> = [
+/* ------------------------------------------------------------------ */
+/* 分類器二：標籤（文件主題）                                            */
+/* ------------------------------------------------------------------ */
+
+/**
+ * 標籤規則刻意**不含**「SOP」「FAQ」這種文件種類詞 ——
+ * 那是資料夾系統的職責。兩套系統的詞彙不重疊，才是真的獨立：
+ * 資料夾回答「這是什麼」，標籤回答「這在講什麼」。
+ */
+const TAG_RULES: Array<{ tag: string; keywords: string[] }> = [
   { tag: '報價', keywords: ['報價', '價格', '定價', '費用', '價目'] },
   { tag: '折扣', keywords: ['折扣', '優惠', '議價', '讓價'] },
   { tag: '合約', keywords: ['合約', '契約', '條款', '年約', '續約'] },
-  { tag: '退貨', keywords: ['退貨', '退款', '退費', '解約'] },
+  { tag: '退貨', keywords: ['退貨', '退款', '退費', '解約', '違約'] },
   { tag: '交付', keywords: ['交付', '交期', '上線', '導入', '交接'] },
   { tag: '售後', keywords: ['售後', '客服', '維運', '保固', '支援'] },
   { tag: '法務', keywords: ['法務', '個資', '合規', '保密', 'NDA'] },
+  { tag: '付款', keywords: ['付款', '請款', '分期', '匯款', '發票'] },
 ];
 
-function countHits(haystack: string, keywords: string[]): string[] {
-  const hits: string[] = [];
-  for (const keyword of keywords) {
-    if (haystack.includes(keyword.toLowerCase())) hits.push(keyword);
-  }
-  return hits;
+function hits(haystack: string, keywords: string[]): string[] {
+  return keywords.filter((keyword) => haystack.includes(keyword.toLowerCase()));
 }
 
-/**
- * 對一份「企業自有文件」做自動歸檔。
- * 會議沉澱的客戶知識不走這裡 —— 它的歸檔位置由公司名決定，見 ingest.ts。
- */
-export function classifyDocument(
+/** 標題的訊號比內文強很多，所以重複三次來加權。 */
+function haystackOf(title: string, body: string): string {
+  return `${title} ${title} ${title} ${body}`.toLowerCase();
+}
+
+/** 分類器一：只決定資料夾，完全不產生標籤。 */
+export function classifyIntoFolder(
   title: string,
   body: string,
-): Classification {
-  // 標題的訊號比內文強很多，所以重複三次來加權。
-  const haystack = `${title} ${title} ${title} ${body}`.toLowerCase();
+): FolderClassification {
+  const haystack = haystackOf(title, body);
 
-  let best: { rule: Rule; hits: string[] } | null = null;
-  for (const rule of RULES) {
-    const hits = countHits(haystack, rule.keywords);
-    if (hits.length === 0) continue;
-    if (!best || hits.length > best.hits.length) best = { rule, hits };
-  }
-
-  const tags = new Set<string>();
-  const reasons: string[] = [];
-
-  for (const topic of TOPIC_TAGS) {
-    const hits = countHits(haystack, topic.keywords);
-    if (hits.length > 0) {
-      tags.add(topic.tag);
-      reasons.push(`內文提到「${hits[0]}」→ 標籤 ${topic.tag}`);
+  let best: { rule: FolderRule; matched: string[] } | null = null;
+  for (const rule of FOLDER_RULES) {
+    const matched = hits(haystack, rule.keywords);
+    if (matched.length === 0) continue;
+    if (!best || matched.length > best.matched.length) {
+      best = { rule, matched };
     }
   }
 
   if (!best) {
     return {
-      path: INBOX,
-      tags: [...tags],
+      path: null,
       docType: 'other',
-      confidence: 0.2,
-      reasons: [
-        ...reasons,
-        '沒有命中任何分類關鍵字，先放進「待整理」等你確認',
-      ],
+      confidence: 0,
+      reasons: ['認不出這是哪一類文件，先不歸檔 —— 你可以自己選資料夾'],
     };
   }
 
-  for (const tag of best.rule.tags) tags.add(tag);
-  reasons.unshift(
-    `標題／內文出現「${best.hits.slice(0, 3).join('」「')}」→ 歸到 ${best.rule.path}`,
-  );
-
-  // 命中越多關鍵字越有把握，但上限壓在 0.95，永遠保留「可能猜錯」的餘地。
-  const confidence = Math.min(0.4 + best.hits.length * 0.15, 0.95);
-
   return {
     path: normalizePath(best.rule.path),
-    tags: [...tags],
     docType: best.rule.docType,
-    confidence,
+    // 命中越多關鍵字越有把握，但上限壓在 0.95，永遠保留「可能猜錯」的餘地。
+    confidence: Math.min(0.4 + best.matched.length * 0.15, 0.95),
+    reasons: [
+      `出現「${best.matched.slice(0, 3).join('」「')}」→ 歸到 ${best.rule.path}`,
+    ],
+  };
+}
+
+/** 分類器二：只決定標籤，完全不決定資料夾。 */
+export function classifyIntoTags(
+  title: string,
+  body: string,
+): TagClassification {
+  const haystack = haystackOf(title, body);
+
+  const tags: string[] = [];
+  const reasons: string[] = [];
+
+  for (const rule of TAG_RULES) {
+    const matched = hits(haystack, rule.keywords);
+    if (matched.length === 0) continue;
+    tags.push(rule.tag);
+    reasons.push(`提到「${matched[0]}」→ 標上「${rule.tag}」`);
+  }
+
+  if (tags.length === 0) {
+    return {
+      tags: [],
+      confidence: 0,
+      reasons: ['認不出主題，先不標籤 —— 你可以自己加'],
+    };
+  }
+
+  return {
+    tags,
+    confidence: Math.min(0.45 + tags.length * 0.15, 0.95),
     reasons,
   };
 }
 
-/** 把分類結果套用到文件上。 */
+/**
+ * 兩套系統各跑一次。
+ * `mode` 關掉的系統不會被計算，回傳的結果是「維持未分類」。
+ */
+export function classifyDocument(
+  title: string,
+  body: string,
+  mode: TaxonomyMode = 'both',
+): Classification {
+  const kinds = activeKinds(mode);
+
+  return {
+    folder: kinds.includes('folder')
+      ? classifyIntoFolder(title, body)
+      : { path: null, docType: 'other', confidence: 0, reasons: [] },
+    tag: kinds.includes('tag')
+      ? classifyIntoTags(title, body)
+      : { tags: [], confidence: 0, reasons: [] },
+  };
+}
+
+/**
+ * 把分類結果套用到文件上。
+ *
+ * 兩個系統各自標記 `autoFiled` / `autoTagged`，使用者可以分開確認 ——
+ * 同意 AI 的歸檔但想自己改標籤是很常見的情況。
+ */
 export function applyClassification(
   doc: KnowledgeDoc,
   classification: Classification,
 ): KnowledgeDoc {
-  return {
-    ...doc,
-    path: classification.path,
-    tags: [...new Set([...doc.tags, ...classification.tags])],
-    docType: classification.docType,
-    autoFiled: true,
-  };
+  const next = { ...doc };
+
+  if (classification.folder.path !== null) {
+    next.path = classification.folder.path;
+    next.docType = classification.folder.docType;
+    next.autoFiled = true;
+  }
+
+  if (classification.tag.tags.length > 0) {
+    next.tags = [...new Set([...doc.tags, ...classification.tag.tags])];
+    next.autoTagged = true;
+  }
+
+  return next;
 }

@@ -1,16 +1,37 @@
 /**
  * 知識庫的資料模型。
  *
- * 設計原則：**一份資料、兩種視角**。
- * 每一筆知識同時帶 `path`（資料夾路徑）和 `tags`（標籤陣列）。
- * 資料夾樹和標籤牆是同一份資料的兩種渲染，不是兩套獨立的儲存，
- * 所以使用者可以自由切換視角，而且永遠不會出現「資料夾整理過、標籤沒整理」的漂移。
+ * 設計原則：**兩套完全獨立的分類系統**。
+ *
+ *   - 資料夾（`path`）：依「這是什麼文件」分類。像 Google Drive 一樣，
+ *     一份文件只能在一個位置。`null` 代表這份知識**不在資料夾系統裡**。
+ *   - 標籤（`tags`）：依「這份文件在講什麼」分類。可以掛多個。
+ *     空陣列代表這份知識**不在標籤系統裡**。
+ *
+ * 兩者互不推導、互不同步：改資料夾不會動到標籤，反之亦然。
+ * 一份知識可以只歸檔、只標記、兩邊都有、或兩邊都沒有。
+ * 每個系統都有自己的「未分類」桶子和自己的涵蓋率。
+ *
+ * 這代表企業可以只用其中一套（`TaxonomyMode`），也代表兩邊可能不一致 ——
+ * 那是刻意允許的，不是 bug。UI 會把每個系統的涵蓋率顯示出來，
+ * 讓使用者知道「還有 12 筆沒有標籤」。
  *
  * 這個模組刻意**不認識 CRM**。知識庫存的是公司／產品知識，
  * CRM 存的是客戶案件檔案，兩者資料模型完全獨立。
  * 唯一的接點是 `sourceRef` 裡的字串 id（meetingId / caseId），
  * 只是純字串，不 import 任何 CRM 型別。
  */
+
+/**
+ * 這個知識庫啟用哪些分類系統。
+ *
+ * 企業的組織習慣不同：有些公司整套照資料夾走，有些公司只想用標籤。
+ * 關掉的系統在 UI 上完全不出現，自動分類也不會去算它。
+ */
+export type TaxonomyMode = 'folder' | 'tag' | 'both';
+
+/** 兩套分類系統的識別字。 */
+export type TaxonomyKind = 'folder' | 'tag';
 
 /** 知識的來源。 */
 export type KnowledgeSource =
@@ -50,11 +71,17 @@ export interface KnowledgeDoc {
   /** 內文，純文字或 Markdown。 */
   body: string;
   /**
-   * 資料夾路徑，永遠以 `/` 開頭、不以 `/` 結尾，例如 `/公司知識/SOP`。
-   * 根目錄是 `/`。
+   * 【分類系統一】資料夾路徑，以 `/` 開頭、不以 `/` 結尾，例如 `/公司知識/SOP`。
+   *
+   * `null` 代表這份知識**不在資料夾系統裡** —— 它不會出現在資料夾樹的任何一層，
+   * 只會出現在「未歸檔」桶子裡。這跟放在根目錄 `/` 是不同的意思。
    */
-  path: string;
-  /** 標籤。同一筆知識可以有多個標籤。 */
+  path: string | null;
+  /**
+   * 【分類系統二】標籤。與 `path` 完全獨立，改一邊不會動到另一邊。
+   *
+   * 空陣列代表這份知識**不在標籤系統裡**，只會出現在「未標記」桶子裡。
+   */
   tags: string[];
   docType: DocType;
   source: KnowledgeSource;
@@ -67,10 +94,23 @@ export interface KnowledgeDoc {
   /** 釘選到列表最上方。 */
   pinned?: boolean;
   /**
-   * 這筆知識是 AI 自動歸檔的，使用者還沒確認過。
-   * UI 會標示「待確認」，讓使用者一鍵接受或改到別的資料夾。
+   * 資料夾位置是 AI 自動判斷的，使用者還沒確認過。
+   * 與 `autoTagged` 分開記 —— 兩套系統各自確認，
+   * 使用者可能同意 AI 的歸檔但想自己改標籤。
    */
   autoFiled?: boolean;
+  /** 標籤是 AI 自動加的，使用者還沒確認過。 */
+  autoTagged?: boolean;
+}
+
+/** 單一分類系統的涵蓋率。UI 用來顯示「還有幾筆沒分類」。 */
+export interface TaxonomyCoverage {
+  kind: TaxonomyKind;
+  /** 已經在這個系統裡分類的知識數。 */
+  classified: number;
+  /** 還沒分類的知識數。 */
+  unclassified: number;
+  total: number;
 }
 
 /** 建立一筆新知識時可以提供的欄位。 */
@@ -103,7 +143,8 @@ export interface TagCount {
 export interface Citation {
   docId: string;
   docTitle: string;
-  docPath: string;
+  /** 來源文件的資料夾。`null` 代表這份知識未歸檔。 */
+  docPath: string | null;
   /** 片段在 `doc.body` 中的起訖字元位置，UI 可以用來 highlight。 */
   start: number;
   end: number;

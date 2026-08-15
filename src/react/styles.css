@@ -168,6 +168,55 @@
   box-shadow: 0 1px 2px rgb(0 0 0 / 0.08);
 }
 
+/* 每套系統的涵蓋率。兩套獨立就會不同步，讓它看得見。 */
+.kb-view-coverage {
+  display: block;
+  margin-top: 1px;
+  font-size: 0.68rem;
+  font-weight: 400;
+  opacity: 0.7;
+}
+
+.kb-taxonomy-note {
+  margin: 0 0 10px;
+  padding: 7px 9px;
+  border-radius: 6px;
+  background: var(--kb-surface);
+  color: var(--kb-text-dim);
+  font-size: 0.75rem;
+  line-height: 1.5;
+}
+
+/* 每套分類系統自己的「未分類」桶子。 */
+.kb-unclassified {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  margin-top: 10px;
+  padding: 6px 8px;
+  border: 1px dashed var(--kb-border);
+  border-radius: 6px;
+  background: none;
+  color: var(--kb-text-dim);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.kb-unclassified:hover {
+  border-color: var(--kb-accent);
+  color: var(--kb-accent);
+}
+
+.kb-unclassified.is-selected {
+  border-style: solid;
+  border-color: var(--kb-accent);
+  background: var(--kb-accent-soft);
+  color: var(--kb-accent);
+  font-weight: 600;
+}
+
 /* ---------- 資料夾樹 ---------- */
 
 .kb-folder-tree ul {
@@ -412,6 +461,16 @@
   color: var(--kb-warn);
 }
 
+.kb-badge-unclassified {
+  border: 1px dashed var(--kb-border);
+  background: none;
+}
+
+.kb-muted {
+  color: var(--kb-text-dim);
+  opacity: 0.75;
+}
+
 /* ---------- 文件詳情 ---------- */
 
 .kb-doc-detail-head {
@@ -436,11 +495,75 @@
 .kb-doc-meta {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
   padding: 10px 0;
   margin-bottom: 12px;
   border-top: 1px solid var(--kb-border);
   border-bottom: 1px solid var(--kb-border);
+}
+
+/*
+ * 兩套分類系統在詳情頁各佔一個區塊。版面上分開，
+ * 使用者才會理解改標籤不會動到資料夾。
+ */
+.kb-taxonomy-block {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 10px;
+  border: 1px solid var(--kb-border);
+  border-radius: 6px;
+}
+
+.kb-taxonomy-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.kb-taxonomy-title {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--kb-text-dim);
+}
+
+.kb-taxonomy-value {
+  font-size: 0.85rem;
+}
+
+.kb-notice-inline {
+  margin-bottom: 0;
+  padding: 6px 9px;
+  font-size: 0.78rem;
+}
+
+.kb-import-systems {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin: 10px 0;
+}
+
+@media (max-width: 640px) {
+  .kb-import-systems {
+    grid-template-columns: 1fr;
+  }
+}
+
+.kb-import-system {
+  padding: 8px 10px;
+  border: 1px solid var(--kb-border);
+  border-radius: 6px;
+  background: var(--kb-bg);
+}
+
+.kb-import-system-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 0.8rem;
+  font-weight: 600;
 }
 
 .kb-field {

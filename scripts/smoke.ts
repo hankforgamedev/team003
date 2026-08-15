@@ -9,18 +9,44 @@ import {
   buildFolderTree,
   buildTagCounts,
   classifyDocument,
+  classifyIntoFolder,
+  classifyIntoTags,
+  countUnfiled,
+  countUntagged,
+  coverage,
   DEMO_MEETING,
   filterByFolder,
   filterByTags,
   ingest,
+  isFiled,
+  isTagged,
   MemoryStore,
   moveFolder,
   normalizePath,
   prepareMeetingDoc,
+  prepareTextDoc,
   searchDocs,
   seed,
   tokenize,
+  UNFILED,
 } from '../src/index.js';
+import type { KnowledgeDoc } from '../src/index.js';
+
+/** 測試用的文件工廠。 */
+function makeDoc(overrides: Partial<KnowledgeDoc> = {}): KnowledgeDoc {
+  return {
+    id: 'd1',
+    title: 't',
+    body: 'b',
+    path: null,
+    tags: [],
+    docType: 'other',
+    source: 'paste',
+    createdAt: '2026-01-01T00:00:00Z',
+    updatedAt: '2026-01-01T00:00:00Z',
+    ...overrides,
+  };
+}
 
 let passed = 0;
 function check(label: string, fn: () => void | Promise<void>) {
@@ -44,27 +70,34 @@ async function main() {
     assert.equal(normalizePath('公司知識/SOP'), '/公司知識/SOP');
     assert.equal(normalizePath('/公司知識/SOP/'), '/公司知識/SOP');
     assert.equal(normalizePath('//公司知識//SOP//'), '/公司知識/SOP');
-    assert.equal(normalizePath(''), '/');
+  });
+
+  await check('未歸檔（null）不會被當成根目錄', () => {
+    // 這是兩套系統獨立的關鍵前提：null 是「不在資料夾系統裡」，
+    // 跟「放在根目錄」是兩回事，不能悄悄互換。
+    assert.equal(normalizePath(null), null);
+    assert.equal(normalizePath(undefined), null);
+    assert.equal(normalizePath(''), null);
+    assert.equal(normalizePath('/'), '/');
   });
 
   await check('中間層資料夾不會斷掉', () => {
     const tree = buildFolderTree([
-      {
-        id: 'a',
-        title: 't',
-        body: 'b',
-        path: '/公司知識/SOP/報價',
-        tags: [],
-        docType: 'sop',
-        source: 'paste',
-        createdAt: '2026-01-01T00:00:00Z',
-        updatedAt: '2026-01-01T00:00:00Z',
-      },
+      makeDoc({ path: '/公司知識/SOP/報價', docType: 'sop' }),
     ]);
     // 只放了一份最深層的文件，但 /公司知識 這層也要存在。
     const level1 = tree.children[0];
     assert.equal(level1?.path, '/公司知識');
     assert.equal(level1?.children[0]?.path, '/公司知識/SOP');
+    assert.equal(tree.totalCount, 1);
+  });
+
+  await check('未歸檔的文件不會混進資料夾樹', () => {
+    const tree = buildFolderTree([
+      makeDoc({ id: 'a', path: '/公司知識/SOP' }),
+      makeDoc({ id: 'b', path: null, tags: ['報價'] }),
+    ]);
+    // 有標籤但沒歸檔的那筆不該被算進任何一層。
     assert.equal(tree.totalCount, 1);
   });
 
@@ -84,23 +117,95 @@ async function main() {
     assert.ok(tokens.includes('折扣'));
   });
 
-  console.log('\n自動歸檔');
+  console.log('\n自動分類（兩套各跑各的）');
 
-  await check('SOP 文件歸到 SOP 資料夾', () => {
-    const result = classifyDocument('報價與折扣授權 SOP', '本標準作業流程規範…');
-    assert.equal(result.path, '/公司知識/SOP');
-    assert.ok(result.tags.includes('SOP'));
-    assert.ok(result.tags.includes('折扣'), '應該自動標上「折扣」');
-    assert.ok(result.confidence > 0.4);
+  await check('資料夾分類器只決定資料夾', () => {
+    const folder = classifyIntoFolder('報價與折扣授權 SOP', '本標準作業流程規範…');
+    assert.equal(folder.path, '/公司知識/SOP');
+    assert.equal(folder.docType, 'sop');
+    assert.ok(folder.confidence > 0.4);
+    // 回傳型別裡根本沒有 tags —— 這個分類器不碰標籤系統。
+    assert.ok(!('tags' in folder));
   });
 
-  await check('猜不到的丟進待整理，而不是根目錄', () => {
+  await check('標籤分類器只決定標籤', () => {
+    const tag = classifyIntoTags('報價與折扣授權 SOP', '折扣需要主管核准…');
+    assert.ok(tag.tags.includes('報價'));
+    assert.ok(tag.tags.includes('折扣'));
+    assert.ok(!('path' in tag));
+  });
+
+  await check('標籤詞彙不含文件種類詞', () => {
+    // 兩套系統的詞彙不重疊才是真的獨立：
+    // 「SOP」是文件種類（資料夾的事），不該變成主題標籤。
+    const tag = classifyIntoTags('SOP', '這是一份 SOP');
+    assert.ok(!tag.tags.includes('SOP'), '「SOP」不該出現在標籤系統');
+  });
+
+  await check('一套猜得到、另一套猜不到是合法結果', () => {
+    // 認得出是 FAQ（資料夾成立），但主題不在標籤規則裡（標籤系統掛零）。
+    const result = classifyDocument('常見問題', '常見問題：今天星期幾？');
+    assert.equal(result.folder.path, '/公司知識/FAQ');
+    assert.deepEqual(result.tag.tags, []);
+    assert.equal(result.tag.confidence, 0);
+
+    // 反過來：認得出主題，但認不出是什麼種類的文件。
+    const other = classifyDocument('備忘', '這次退費要走匯款');
+    assert.equal(other.folder.path, null, '猜不出來就維持未歸檔');
+    assert.ok(other.tag.tags.includes('退貨'));
+    assert.ok(other.tag.tags.includes('付款'));
+  });
+
+  await check('猜不到時維持未分類，不塞進收件匣', () => {
     const result = classifyDocument('隨手筆記', '今天天氣不錯');
-    assert.equal(result.path, '/待整理');
-    assert.ok(result.confidence < 0.4, '把握度要低，UI 才會提示確認');
+    assert.equal(result.folder.path, null);
+    assert.deepEqual(result.tag.tags, []);
+  });
+
+  await check('mode 可以只啟用一套系統', () => {
+    const folderOnly = classifyDocument('報價 SOP', '折扣流程', 'folder');
+    assert.equal(folderOnly.folder.path, '/公司知識/SOP');
+    assert.deepEqual(folderOnly.tag.tags, [], '標籤系統關掉就不該有結果');
+
+    const tagOnly = classifyDocument('報價 SOP', '折扣流程', 'tag');
+    assert.equal(tagOnly.folder.path, null, '資料夾系統關掉就不該歸檔');
+    assert.ok(tagOnly.tag.tags.includes('折扣'));
+  });
+
+  await check('指定一套不會清掉另一套的自動結果', () => {
+    // 使用者說「放這個資料夾」，AI 猜的標籤要留著。
+    const { doc } = prepareTextDoc('折扣需要主管核准', {
+      title: '報價規範',
+      path: '/我的/自訂位置',
+    });
+    assert.equal(doc.path, '/我的/自訂位置');
+    assert.equal(doc.autoFiled, false, '使用者指定的不算 AI 歸檔');
+    assert.ok(doc.tags.includes('折扣'), 'AI 猜的標籤要保留');
+    assert.equal(doc.autoTagged, true);
+  });
+
+  await check('可以明確指定不進資料夾系統', () => {
+    const { doc } = prepareTextDoc('折扣需要主管核准', {
+      title: '報價規範',
+      path: null,
+    });
+    assert.equal(doc.path, null);
+    assert.ok(doc.tags.length > 0, '標籤系統仍然照跑');
   });
 
   console.log('\n會議 JSON 沉澱');
+
+  await check('只啟用資料夾時不產生標籤', () => {
+    const { doc } = prepareMeetingDoc(DEMO_MEETING, 'folder');
+    assert.equal(doc.path, '/客戶知識/沐日食品');
+    assert.deepEqual(doc.tags, []);
+  });
+
+  await check('只啟用標籤時不歸檔', () => {
+    const { doc } = prepareMeetingDoc(DEMO_MEETING, 'tag');
+    assert.equal(doc.path, null);
+    assert.ok(doc.tags.includes('品牌方'));
+  });
 
   await check('依公司名歸檔並保留原話', () => {
     const { doc } = prepareMeetingDoc(DEMO_MEETING);
@@ -123,21 +228,118 @@ async function main() {
     assert.equal(result.doc.path, '/客戶知識/沐日食品');
   });
 
-  console.log('\n兩種視角');
+  console.log('\n兩套獨立分類系統');
 
-  await check('資料夾與標籤篩的是同一份資料', async () => {
+  await check('四種分類狀態都成立', () => {
+    const docs = [
+      makeDoc({ id: 'both', path: '/公司知識/SOP', tags: ['報價'] }),
+      makeDoc({ id: 'filedOnly', path: '/公司知識/SOP', tags: [] }),
+      makeDoc({ id: 'taggedOnly', path: null, tags: ['報價'] }),
+      makeDoc({ id: 'neither', path: null, tags: [] }),
+    ];
+
+    assert.deepEqual(
+      docs.filter(isFiled).map((d) => d.id),
+      ['both', 'filedOnly'],
+    );
+    assert.deepEqual(
+      docs.filter(isTagged).map((d) => d.id),
+      ['both', 'taggedOnly'],
+    );
+    assert.equal(countUnfiled(docs), 2);
+    assert.equal(countUntagged(docs), 2);
+  });
+
+  await check('兩個視角篩出來的成員可以完全不同', () => {
+    const docs = [
+      makeDoc({ id: 'filedOnly', path: '/公司知識/SOP', tags: [] }),
+      makeDoc({ id: 'taggedOnly', path: null, tags: ['報價'] }),
+    ];
+
+    // 資料夾視角只看得到 filedOnly，標籤視角只看得到 taggedOnly。
+    // 這是兩套系統獨立最直接的後果 —— 不是同一份集合的兩種排列。
+    assert.deepEqual(
+      filterByFolder(docs, '/').map((d) => d.id),
+      ['filedOnly'],
+    );
+    assert.deepEqual(
+      filterByTags(docs, []).map((d) => d.id),
+      ['taggedOnly'],
+    );
+  });
+
+  await check('每套系統有自己的未分類桶子', () => {
+    const docs = [
+      makeDoc({ id: 'filedOnly', path: '/公司知識/SOP', tags: [] }),
+      makeDoc({ id: 'taggedOnly', path: null, tags: ['報價'] }),
+    ];
+
+    // 未歸檔桶子裝的是 taggedOnly（它有標籤，但沒進資料夾系統）。
+    assert.deepEqual(
+      filterByFolder(docs, UNFILED).map((d) => d.id),
+      ['taggedOnly'],
+    );
+    // 未標記桶子裝的是 filedOnly。兩個桶子的內容完全相反。
+    assert.deepEqual(
+      filterByTags(docs, [], 'and', true).map((d) => d.id),
+      ['filedOnly'],
+    );
+  });
+
+  await check('涵蓋率各算各的', () => {
+    const docs = [
+      makeDoc({ id: 'a', path: '/x', tags: ['報價'] }),
+      makeDoc({ id: 'b', path: '/x', tags: [] }),
+      makeDoc({ id: 'c', path: null, tags: [] }),
+    ];
+    assert.deepEqual(coverage(docs, 'folder'), {
+      kind: 'folder',
+      classified: 2,
+      unclassified: 1,
+      total: 3,
+    });
+    assert.deepEqual(coverage(docs, 'tag'), {
+      kind: 'tag',
+      classified: 1,
+      unclassified: 2,
+      total: 3,
+    });
+  });
+
+  await check('改一套不會動到另一套', async () => {
+    const store = new MemoryStore();
+    const doc = await store.putDoc(
+      makeDoc({ path: '/公司知識/SOP', tags: ['報價', '折扣'] }),
+    );
+
+    // 只改資料夾
+    const moved = await store.putDoc({ ...doc, path: '/封存' });
+    assert.deepEqual(moved.tags, ['報價', '折扣'], '標籤不該被動到');
+
+    // 只改標籤
+    const retagged = await store.putDoc({ ...moved, tags: ['合約'] });
+    assert.equal(retagged.path, '/封存', '資料夾不該被動到');
+  });
+
+  await check('示範資料涵蓋四種狀態', async () => {
     const store = new MemoryStore();
     await seed(store);
     const docs = await store.listDocs();
 
-    const byFolder = filterByFolder(docs, '/公司知識/SOP');
-    assert.ok(byFolder.length >= 2, 'SOP 資料夾要有文件');
+    assert.ok(countUnfiled(docs) > 0, '要有未歸檔的，才示範得出獨立性');
+    assert.ok(countUntagged(docs) > 0, '要有未標記的');
 
-    const byTag = filterByTags(docs, ['SOP']);
-    // 同一批知識，兩種視角都找得到 —— 這就是「一份資料兩種渲染」。
-    assert.deepEqual(
-      byFolder.map((d) => d.id).sort(),
-      byTag.map((d) => d.id).sort(),
+    // 重點是兩套系統的**成員**不同，不是數量不同 ——
+    // 各分類 5 筆但那 5 筆不是同一批，一樣證明是兩套系統。
+    const filed = new Set(docs.filter(isFiled).map((d) => d.id));
+    const tagged = new Set(docs.filter(isTagged).map((d) => d.id));
+    assert.ok(
+      [...filed].some((id) => !tagged.has(id)),
+      '要有「歸了檔但沒標籤」的知識',
+    );
+    assert.ok(
+      [...tagged].some((id) => !filed.has(id)),
+      '要有「標了籤但沒歸檔」的知識',
     );
   });
 
@@ -145,25 +347,13 @@ async function main() {
     const store = new MemoryStore();
     await seed(store);
     const docs = await store.listDocs();
-    const both = filterByTags(docs, ['SOP', '折扣']);
-    const sopOnly = filterByTags(docs, ['SOP']);
-    assert.ok(both.length < sopOnly.length, '交集應該更少');
+    const both = filterByTags(docs, ['報價', '合約']);
+    const one = filterByTags(docs, ['報價']);
+    assert.ok(both.length < one.length, '交集應該更少');
   });
 
   await check('搬資料夾會連子資料夾一起搬', () => {
-    const docs = [
-      {
-        id: 'a',
-        title: 't',
-        body: 'b',
-        path: '/公司知識/SOP/報價',
-        tags: [],
-        docType: 'sop' as const,
-        source: 'paste' as const,
-        createdAt: '2026-01-01T00:00:00Z',
-        updatedAt: '2026-01-01T00:00:00Z',
-      },
-    ];
+    const docs = [makeDoc({ path: '/公司知識/SOP/報價', docType: 'sop' })];
     const moved = moveFolder(docs, '/公司知識', '/封存/公司知識');
     assert.equal(moved[0]?.path, '/封存/公司知識/SOP/報價');
 
@@ -171,6 +361,15 @@ async function main() {
       () => moveFolder(docs, '/公司知識', '/公司知識/子層'),
       /不能把資料夾搬進自己的子資料夾/,
     );
+  });
+
+  await check('搬資料夾不會碰到未歸檔的文件', () => {
+    const docs = [
+      makeDoc({ id: 'a', path: '/公司知識/SOP' }),
+      makeDoc({ id: 'b', path: null, tags: ['報價'] }),
+    ];
+    const moved = moveFolder(docs, '/公司知識', '/封存');
+    assert.deepEqual(moved.map((d) => d.id), ['a']);
   });
 
   console.log('\n檢索與問答');

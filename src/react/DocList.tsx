@@ -75,11 +75,20 @@ export function DocList({ docs, selectedId, onSelect, query }: DocListProps) {
 
               <p className="kb-doc-preview">{preview(doc.body)}</p>
 
+              {/*
+                兩套分類系統的狀態都要顯示 —— 一份知識可能歸了檔但沒標籤，
+                在列表上就要看得出來，不然使用者不知道哪一套還缺。
+              */}
               <div className="kb-doc-item-meta">
-                <span className="kb-doc-path">{doc.path}</span>
+                <span className="kb-doc-path">
+                  {doc.path ?? <span className="kb-muted">未歸檔</span>}
+                </span>
+                {doc.tags.length === 0 && (
+                  <span className="kb-muted">未標記</span>
+                )}
                 <span className="kb-doc-date">{formatDate(doc.updatedAt)}</span>
-                {doc.autoFiled && (
-                  <span className="kb-badge kb-badge-auto">AI 歸檔待確認</span>
+                {(doc.autoFiled || doc.autoTagged) && (
+                  <span className="kb-badge kb-badge-auto">AI 待確認</span>
                 )}
               </div>
             </button>

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ROOT } from '../core/taxonomy.js';
+import { ROOT, UNFILED } from '../core/taxonomy.js';
 import type { FolderNode } from '../core/types.js';
 
 interface FolderTreeProps {
@@ -7,6 +7,8 @@ interface FolderTreeProps {
   selected: string;
   onSelect: (path: string) => void;
   onAddFolder?: (path: string) => void;
+  /** 沒有進資料夾系統的知識數。這是資料夾系統自己的未分類桶子。 */
+  unfiledCount: number;
 }
 
 interface RowProps {
@@ -83,6 +85,7 @@ export function FolderTree({
   selected,
   onSelect,
   onAddFolder,
+  unfiledCount,
 }: FolderTreeProps) {
   const [draft, setDraft] = useState('');
   const [adding, setAdding] = useState(false);
@@ -91,7 +94,8 @@ export function FolderTree({
     const name = draft.trim();
     if (!name || !onAddFolder) return;
     // 新資料夾建在目前選取的位置底下，符合檔案總管的直覺。
-    const parent = selected === ROOT ? '' : selected;
+    // 在「未歸檔」桶子上按新增時視為建在根目錄。
+    const parent = selected === ROOT || selected === UNFILED ? '' : selected;
     onAddFolder(`${parent}/${name}`);
     setDraft('');
     setAdding(false);
@@ -102,6 +106,24 @@ export function FolderTree({
       <ul className="kb-folder-root">
         <FolderRow node={tree} depth={0} selected={selected} onSelect={onSelect} />
       </ul>
+
+      {/*
+        未歸檔的知識不在樹裡的任何一層，所以獨立成一個桶子。
+        它跟「根目錄」是不同的意思：根目錄是資料夾系統的頂層，
+        這裡是「根本沒進這套系統」。
+      */}
+      {unfiledCount > 0 && (
+        <button
+          type="button"
+          className={`kb-unclassified${selected === UNFILED ? ' is-selected' : ''}`}
+          onClick={() => onSelect(UNFILED)}
+          aria-current={selected === UNFILED ? 'true' : undefined}
+        >
+          <span aria-hidden="true">📥</span>
+          <span className="kb-folder-label">未歸檔</span>
+          <span className="kb-folder-count">{unfiledCount}</span>
+        </button>
+      )}
 
       {onAddFolder &&
         (adding ? (

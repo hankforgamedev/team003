@@ -14,8 +14,9 @@ interface DocDetailProps {
 /**
  * 文件詳情。
  *
- * 這裡是資料夾和標籤**唯一**的編輯入口 —— 兩者都是這份文件的欄位，
- * 在同一個地方改，使用者才會理解它們是同一筆知識的兩種面向。
+ * 資料夾和標籤在這裡是**兩個分開的區塊**，各自有自己的「未分類」狀態
+ * 和自己的 AI 待確認提示。改一邊不會動到另一邊 ——
+ * 版面上分開，使用者才會理解它們是兩套獨立的分類，而不是同一件事的兩種寫法。
  */
 export function DocDetail({
   doc,
@@ -27,7 +28,8 @@ export function DocDetail({
   const [editing, setEditing] = useState(false);
   const [title, setTitle] = useState(doc.title);
   const [body, setBody] = useState(doc.body);
-  const [path, setPath] = useState(doc.path);
+  // 空字串代表未歸檔。輸入框沒辦法表達 null，在 save 時轉回去。
+  const [path, setPath] = useState(doc.path ?? '');
   const [tagDraft, setTagDraft] = useState('');
 
   // 切換到另一份文件時把編輯狀態重置，不然會把 A 的內容存到 B 身上。
@@ -35,7 +37,7 @@ export function DocDetail({
     setEditing(false);
     setTitle(doc.title);
     setBody(doc.body);
-    setPath(doc.path);
+    setPath(doc.path ?? '');
     setTagDraft('');
   }, [doc.id, doc.title, doc.body, doc.path]);
 
@@ -45,22 +47,35 @@ export function DocDetail({
   );
 
   const save = () => {
-    onSave({ ...doc, title, body, path, autoFiled: false });
+    const trimmed = path.trim();
+    onSave({
+      ...doc,
+      title,
+      body,
+      // 清空資料夾欄位 = 把這份知識移出資料夾系統，不是搬到根目錄。
+      path: trimmed === '' ? null : trimmed,
+      autoFiled: false,
+    });
     setEditing(false);
   };
 
+  // 標籤是另一套系統，改它不碰 path，也不碰 autoFiled。
   const addTag = () => {
     const tag = tagDraft.trim();
     if (!tag || doc.tags.includes(tag)) {
       setTagDraft('');
       return;
     }
-    onSave({ ...doc, tags: [...doc.tags, tag] });
+    onSave({ ...doc, tags: [...doc.tags, tag], autoTagged: false });
     setTagDraft('');
   };
 
   const removeTag = (tag: string) => {
-    onSave({ ...doc, tags: doc.tags.filter((t) => t !== tag) });
+    onSave({
+      ...doc,
+      tags: doc.tags.filter((t) => t !== tag),
+      autoTagged: false,
+    });
   };
 
   return (
@@ -116,35 +131,56 @@ export function DocDetail({
         </div>
       </header>
 
-      {doc.autoFiled && (
-        <div className="kb-notice">
-          這份知識是 AI 自動歸檔的，還沒有人確認過。
-          <button
-            type="button"
-            className="kb-btn kb-btn-sm"
-            onClick={() => onSave({ ...doc, autoFiled: false })}
-          >
-            位置正確
-          </button>
-        </div>
-      )}
-
       <div className="kb-doc-meta">
-        <label className="kb-field">
-          <span className="kb-field-label">資料夾</span>
+        {/* ── 分類系統一：資料夾 ────────────────────────────── */}
+        <section className="kb-taxonomy-block">
+          <div className="kb-taxonomy-head">
+            <span className="kb-taxonomy-title">📁 資料夾</span>
+            {doc.path === null && (
+              <span className="kb-badge kb-badge-unclassified">未歸檔</span>
+            )}
+          </div>
+
           {editing ? (
             <input
               className="kb-input"
               value={path}
+              placeholder="留空 = 不放進資料夾系統"
               onChange={(event) => setPath(event.target.value)}
             />
           ) : (
-            <span className="kb-field-value">{doc.path}</span>
+            <div className="kb-taxonomy-value">
+              {doc.path ?? (
+                <span className="kb-muted">
+                  這份知識不在資料夾系統裡，只會出現在「未歸檔」。
+                </span>
+              )}
+            </div>
           )}
-        </label>
 
-        <div className="kb-field">
-          <span className="kb-field-label">標籤</span>
+          {doc.autoFiled && (
+            <div className="kb-notice kb-notice-inline">
+              資料夾位置是 AI 判斷的，還沒確認過。
+              <button
+                type="button"
+                className="kb-btn kb-btn-sm"
+                onClick={() => onSave({ ...doc, autoFiled: false })}
+              >
+                位置正確
+              </button>
+            </div>
+          )}
+        </section>
+
+        {/* ── 分類系統二：標籤（與上面完全獨立） ──────────────── */}
+        <section className="kb-taxonomy-block">
+          <div className="kb-taxonomy-head">
+            <span className="kb-taxonomy-title">🏷️ 標籤</span>
+            {doc.tags.length === 0 && (
+              <span className="kb-badge kb-badge-unclassified">未標記</span>
+            )}
+          </div>
+
           <div className="kb-tag-editor">
             {doc.tags.map((tag) => (
               <span key={tag} className="kb-tag kb-tag-static">
@@ -173,7 +209,20 @@ export function DocDetail({
               onBlur={addTag}
             />
           </div>
-        </div>
+
+          {doc.autoTagged && (
+            <div className="kb-notice kb-notice-inline">
+              標籤是 AI 加的，還沒確認過。
+              <button
+                type="button"
+                className="kb-btn kb-btn-sm"
+                onClick={() => onSave({ ...doc, autoTagged: false })}
+              >
+                標籤正確
+              </button>
+            </div>
+          )}
+        </section>
 
         {doc.sourceRef?.meetingId && (
           <div className="kb-field">

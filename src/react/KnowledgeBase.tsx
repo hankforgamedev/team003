@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { AskOptions } from '../core/qa.js';
 import type { KnowledgeStore } from '../core/store.js';
-import type { Citation } from '../core/types.js';
+import type { Citation, TaxonomyMode } from '../core/types.js';
 import { AskPanel } from './AskPanel.js';
 import { DocDetail } from './DocDetail.js';
 import { DocList } from './DocList.js';
@@ -15,6 +15,11 @@ export interface KnowledgeBaseProps {
   /** 知識庫是空的時就自動灌示範資料。 */
   seedIfEmpty?: boolean;
   askOptions?: AskOptions;
+  /**
+   * 啟用哪些分類系統。`'folder'` / `'tag'` 只啟用一套，`'both'`（預設）兩套都開。
+   * 只啟用一套時，視角切換不會出現。
+   */
+  mode?: TaxonomyMode;
   /** 點「回到這場會議」時呼叫，讓宿主 app 導頁。 */
   onOpenMeeting?: (meetingId: string) => void;
 }
@@ -24,19 +29,24 @@ type Tab = 'browse' | 'ask' | 'import';
 /**
  * 知識庫主畫面。
  *
- * 版面是三欄：左邊分類（資料夾或標籤，可切換）、中間列表、右邊內容。
- * 頂端的視角切換是這個模組的核心主張 —— 資料夾和標籤是**同一份資料**
- * 的兩種看法，切過去不會看到不同的知識，只會看到不同的組織方式。
+ * 版面是三欄：左邊分類、中間列表、右邊內容。
+ *
+ * 左上角切換的是**兩套獨立的分類系統**，不是同一份資料的兩種排法 ——
+ * 切過去會看到不同的成員、不同的數量、各自的未分類桶子。
+ * 所以切換鈕旁邊一定要顯示每套系統的涵蓋率，
+ * 使用者才不會以為「切過去東西不見了」。
  */
 export function KnowledgeBase({
   store,
   seedIfEmpty = false,
   askOptions,
+  mode = 'both',
   onOpenMeeting,
 }: KnowledgeBaseProps) {
   const kb = useKnowledgeBase({
     ...(store ? { store } : {}),
     seedIfEmpty,
+    mode,
     ...(askOptions ? { askOptions } : {}),
   });
 
@@ -134,25 +144,50 @@ export function KnowledgeBase({
       {tab === 'browse' && (
         <div className="kb-body">
           <aside className="kb-sidebar">
-            {/* 視角切換：這是模組的核心主張，所以放在最顯眼的位置。 */}
-            <div className="kb-view-switch" role="group" aria-label="分類方式">
-              <button
-                type="button"
-                className={`kb-view-btn${kb.view === 'folder' ? ' is-active' : ''}`}
-                onClick={() => kb.setView('folder')}
-                aria-pressed={kb.view === 'folder'}
-              >
-                📁 資料夾
-              </button>
-              <button
-                type="button"
-                className={`kb-view-btn${kb.view === 'tag' ? ' is-active' : ''}`}
-                onClick={() => kb.setView('tag')}
-                aria-pressed={kb.view === 'tag'}
-              >
-                🏷️ 標籤
-              </button>
-            </div>
+            {/* 兩套系統都啟用時才需要切換鈕。 */}
+            {kb.kinds.length > 1 && (
+              <div className="kb-view-switch" role="group" aria-label="分類系統">
+                <button
+                  type="button"
+                  className={`kb-view-btn${kb.view === 'folder' ? ' is-active' : ''}`}
+                  onClick={() => kb.setView('folder')}
+                  aria-pressed={kb.view === 'folder'}
+                >
+                  📁 資料夾
+                  <span className="kb-view-coverage">
+                    {kb.folderCoverage.classified}/{kb.folderCoverage.total}
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  className={`kb-view-btn${kb.view === 'tag' ? ' is-active' : ''}`}
+                  onClick={() => kb.setView('tag')}
+                  aria-pressed={kb.view === 'tag'}
+                >
+                  🏷️ 標籤
+                  <span className="kb-view-coverage">
+                    {kb.tagCoverage.classified}/{kb.tagCoverage.total}
+                  </span>
+                </button>
+              </div>
+            )}
+
+            {/*
+              兩套系統獨立最直接的後果：涵蓋率不一樣。
+              把它講明白，使用者切過去才不會以為知識不見了。
+            */}
+            {kb.kinds.length > 1 &&
+              kb.folderCoverage.classified !== kb.tagCoverage.classified && (
+                <p className="kb-taxonomy-note">
+                  兩套分類各自獨立，成員不一定相同。
+                  {kb.view === 'folder' && kb.folderCoverage.unclassified > 0 && (
+                    <> 有 {kb.folderCoverage.unclassified} 筆還沒歸檔。</>
+                  )}
+                  {kb.view === 'tag' && kb.tagCoverage.unclassified > 0 && (
+                    <> 有 {kb.tagCoverage.unclassified} 筆還沒標記。</>
+                  )}
+                </p>
+              )}
 
             {kb.view === 'folder' ? (
               <FolderTree
@@ -160,6 +195,7 @@ export function KnowledgeBase({
                 selected={kb.selectedFolder}
                 onSelect={kb.setSelectedFolder}
                 onAddFolder={(path) => void kb.addFolder(path)}
+                unfiledCount={kb.unfiledCount}
               />
             ) : (
               <TagPanel
@@ -167,6 +203,9 @@ export function KnowledgeBase({
                 selected={kb.selectedTags}
                 onToggle={kb.toggleTag}
                 onClear={kb.clearTags}
+                untaggedCount={kb.untaggedCount}
+                showUntagged={kb.showUntagged}
+                onShowUntagged={kb.setShowUntagged}
               />
             )}
           </aside>

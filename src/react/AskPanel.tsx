@@ -103,7 +103,7 @@ export function AskPanel({ onAsk, onOpenCitation }: AskPanelProps) {
                         <span className="kb-citation-source">
                           {citation.docTitle}
                           <span className="kb-citation-path">
-                            {citation.docPath}
+                            {citation.docPath ?? '未歸檔'}
                           </span>
                         </span>
                         <span className="kb-citation-text">

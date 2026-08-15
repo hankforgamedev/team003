@@ -5,25 +5,28 @@ interface TagPanelProps {
   selected: string[];
   onToggle: (tag: string) => void;
   onClear: () => void;
+  /** 沒有進標籤系統的知識數。這是標籤系統自己的未分類桶子。 */
+  untaggedCount: number;
+  showUntagged: boolean;
+  onShowUntagged: (value: boolean) => void;
 }
 
 /**
- * 標籤視角。
+ * 標籤視角 —— 一套**獨立於資料夾**的分類系統。
  *
- * 和資料夾樹讀的是同一份文件陣列 —— 這裡顯示的每個標籤，
- * 都來自某份文件的 `tags`，不是另一套獨立維護的分類。
- * 所以使用者在資料夾視角搬動文件，標籤這邊不會失真。
+ * 這裡看到的成員跟資料夾視角不一樣：只歸檔沒標籤的知識在這裡看不到，
+ * 只會出現在下面的「未標記」桶子裡。這是刻意的，不是漏掉。
  */
-export function TagPanel({ tags, selected, onToggle, onClear }: TagPanelProps) {
-  if (tags.length === 0) {
-    return (
-      <div className="kb-tag-panel">
-        <p className="kb-empty-hint">
-          還沒有任何標籤。上傳文件時系統會自動標，你也可以在文件頁自己加。
-        </p>
-      </div>
-    );
-  }
+export function TagPanel({
+  tags,
+  selected,
+  onToggle,
+  onClear,
+  untaggedCount,
+  showUntagged,
+  onShowUntagged,
+}: TagPanelProps) {
+  const hasSelection = selected.length > 0 || showUntagged;
 
   // 用出現次數決定字級，一眼看得出公司知識集中在哪些主題。
   const max = Math.max(...tags.map((t) => t.count), 1);
@@ -32,12 +35,18 @@ export function TagPanel({ tags, selected, onToggle, onClear }: TagPanelProps) {
     <div className="kb-tag-panel">
       <div className="kb-tag-panel-head">
         <span className="kb-panel-title">標籤</span>
-        {selected.length > 0 && (
+        {hasSelection && (
           <button type="button" className="kb-btn kb-btn-ghost kb-btn-sm" onClick={onClear}>
-            清除（{selected.length}）
+            清除
           </button>
         )}
       </div>
+
+      {tags.length === 0 && (
+        <p className="kb-empty-hint">
+          還沒有任何標籤。匯入時系統會自動標，你也可以在文件頁自己加。
+        </p>
+      )}
 
       <div className="kb-tag-cloud">
         {tags.map(({ tag, count }) => {
@@ -58,6 +67,19 @@ export function TagPanel({ tags, selected, onToggle, onClear }: TagPanelProps) {
           );
         })}
       </div>
+
+      {untaggedCount > 0 && (
+        <button
+          type="button"
+          className={`kb-unclassified${showUntagged ? ' is-selected' : ''}`}
+          onClick={() => onShowUntagged(!showUntagged)}
+          aria-pressed={showUntagged}
+        >
+          <span aria-hidden="true">🏷️</span>
+          <span className="kb-folder-label">未標記</span>
+          <span className="kb-folder-count">{untaggedCount}</span>
+        </button>
+      )}
 
       {selected.length > 1 && (
         <p className="kb-tag-hint">

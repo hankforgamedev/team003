@@ -93,7 +93,11 @@ abstract class BaseStore implements KnowledgeStore {
       : [...snapshot.docs, doc];
 
     // 文件進駐之後，這個資料夾就不再是「空資料夾」了。
-    const emptyFolders = snapshot.emptyFolders.filter((f) => f !== doc.path);
+    // 未歸檔的文件（path 為 null）不會讓任何資料夾脫離空狀態。
+    const emptyFolders =
+      doc.path === null
+        ? snapshot.emptyFolders
+        : snapshot.emptyFolders.filter((f) => f !== doc.path);
 
     await this.write({ docs, emptyFolders });
     return doc;
@@ -114,6 +118,7 @@ abstract class BaseStore implements KnowledgeStore {
 
   async addEmptyFolder(path: string): Promise<void> {
     const normalized = normalizePath(path);
+    if (normalized === null) return;
     const snapshot = await this.read();
     if (snapshot.emptyFolders.includes(normalized)) return;
     await this.write({
@@ -124,6 +129,7 @@ abstract class BaseStore implements KnowledgeStore {
 
   async removeEmptyFolder(path: string): Promise<void> {
     const normalized = normalizePath(path);
+    if (normalized === null) return;
     const snapshot = await this.read();
     await this.write({
       ...snapshot,

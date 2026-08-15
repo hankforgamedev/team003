@@ -119,26 +119,60 @@ export function ImportPanel({ onImport, onDone }: ImportPanelProps) {
         <div className="kb-import-result">
           <div className="kb-import-result-head">
             <strong>{result.doc.title}</strong>
-            <span className="kb-confidence">
-              把握度 {Math.round(result.confidence * 100)}%
-            </span>
           </div>
 
-          <p className="kb-import-placed">
-            已放進 <code>{result.doc.path}</code>
-            {result.doc.tags.length > 0 && (
-              <>
-                ，標上 {result.doc.tags.map((t) => `「${t}」`).join('')}
-              </>
-            )}
-          </p>
+          {/*
+            兩套分類系統各自回報。分開顯示是刻意的 ——
+            其中一套猜得出來、另一套猜不出來是很常見的結果，
+            使用者要能一眼看出哪一套需要他補。
+          */}
+          <div className="kb-import-systems">
+            <div className="kb-import-system">
+              <div className="kb-import-system-head">
+                <span>📁 資料夾</span>
+                {result.doc.path ? (
+                  <span className="kb-confidence">
+                    把握度 {Math.round(result.classification.folder.confidence * 100)}%
+                  </span>
+                ) : (
+                  <span className="kb-badge kb-badge-unclassified">未歸檔</span>
+                )}
+              </div>
+              {result.doc.path && (
+                <p className="kb-import-placed">
+                  <code>{result.doc.path}</code>
+                </p>
+              )}
+              <ul className="kb-reasons">
+                {result.classification.folder.reasons.map((reason, index) => (
+                  <li key={index}>{reason}</li>
+                ))}
+              </ul>
+            </div>
 
-          {/* 讓自動歸檔是可解釋的 —— 使用者要看得懂 AI 為什麼這樣放。 */}
-          <ul className="kb-reasons">
-            {result.reasons.map((reason, index) => (
-              <li key={index}>{reason}</li>
-            ))}
-          </ul>
+            <div className="kb-import-system">
+              <div className="kb-import-system-head">
+                <span>🏷️ 標籤</span>
+                {result.doc.tags.length > 0 ? (
+                  <span className="kb-confidence">
+                    把握度 {Math.round(result.classification.tag.confidence * 100)}%
+                  </span>
+                ) : (
+                  <span className="kb-badge kb-badge-unclassified">未標記</span>
+                )}
+              </div>
+              {result.doc.tags.length > 0 && (
+                <p className="kb-import-placed">
+                  {result.doc.tags.map((t) => `「${t}」`).join('')}
+                </p>
+              )}
+              <ul className="kb-reasons">
+                {result.classification.tag.reasons.map((reason, index) => (
+                  <li key={index}>{reason}</li>
+                ))}
+              </ul>
+            </div>
+          </div>
 
           <button
             type="button"

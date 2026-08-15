@@ -16,6 +16,9 @@ export type {
   SearchResult,
   SourceRef,
   TagCount,
+  TaxonomyCoverage,
+  TaxonomyKind,
+  TaxonomyMode,
 } from './core/types.js';
 
 export type {
@@ -33,11 +36,17 @@ export {
 } from './core/store.js';
 
 export {
+  activeKinds,
   buildFolderTree,
   buildTagCounts,
+  countUnfiled,
+  countUntagged,
+  coverage,
   filterByFolder,
   filterByTags,
   folderName,
+  isFiled,
+  isTagged,
   isUnder,
   moveFolder,
   normalizePath,
@@ -45,6 +54,7 @@ export {
   pathSegments,
   ROOT,
   sortDocs,
+  UNFILED,
 } from './core/taxonomy.js';
 
 export { tokenize } from './core/tokenize.js';
@@ -53,12 +63,17 @@ export type { Chunk } from './core/chunk.js';
 export { buildIndex, searchChunks, searchDocs } from './core/search.js';
 export type { SearchIndex } from './core/search.js';
 
-export type { Classification } from './core/classify.js';
+export type {
+  Classification,
+  FolderClassification,
+  TagClassification,
+} from './core/classify.js';
 export {
   applyClassification,
   classifyDocument,
+  classifyIntoFolder,
+  classifyIntoTags,
   DEFAULT_FOLDERS,
-  INBOX,
 } from './core/classify.js';
 
 export type { IngestResult, IngestTextOptions } from './core/ingest.js';

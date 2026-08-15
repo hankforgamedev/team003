@@ -8,17 +8,33 @@ import { searchDocs } from '../core/search.js';
 import { seed } from '../core/seed.js';
 import { createDefaultStore, type KnowledgeStore } from '../core/store.js';
 import {
+  activeKinds,
   buildFolderTree,
   buildTagCounts,
+  countUnfiled,
+  countUntagged,
+  coverage,
   filterByFolder,
   filterByTags,
   ROOT,
   sortDocs,
 } from '../core/taxonomy.js';
-import type { Answer, KnowledgeDoc } from '../core/types.js';
+import type {
+  Answer,
+  KnowledgeDoc,
+  TaxonomyCoverage,
+  TaxonomyKind,
+  TaxonomyMode,
+} from '../core/types.js';
 
-/** 資料夾視角 vs 標籤視角。同一份資料的兩種渲染。 */
-export type ViewMode = 'folder' | 'tag';
+/**
+ * 目前正在看哪一套分類系統。
+ *
+ * 注意這**不是**同一份資料的兩種渲染 —— 兩個視角的成員可以完全不同：
+ * 只歸檔沒標籤的知識在標籤視角看不到，反之亦然。
+ * 所以切換視角時看到的數量不一樣是正常的，UI 要把這件事講清楚。
+ */
+export type ViewMode = TaxonomyKind;
 
 export interface UseKnowledgeBaseOptions {
   store?: KnowledgeStore;
@@ -26,6 +42,11 @@ export interface UseKnowledgeBaseOptions {
   seedIfEmpty?: boolean;
   /** 問答的 LLM provider。不給就用內建的抽取式回答。 */
   askOptions?: AskOptions;
+  /**
+   * 啟用哪些分類系統。有些企業只想用資料夾，有些只想用標籤。
+   * 關掉的系統在 UI 上完全不出現，自動分類也不會去算它。
+   */
+  mode?: TaxonomyMode;
 }
 
 export interface KnowledgeBaseApi {
@@ -34,17 +55,32 @@ export interface KnowledgeBaseApi {
   visibleDocs: KnowledgeDoc[];
   loading: boolean;
 
+  mode: TaxonomyMode;
+  /** 這個模式下啟用的系統。UI 用來決定要不要顯示視角切換。 */
+  kinds: TaxonomyKind[];
   view: ViewMode;
   setView: (view: ViewMode) => void;
 
+  /** 兩套系統各自的涵蓋率。讓「不同步」是看得見的。 */
+  folderCoverage: TaxonomyCoverage;
+  tagCoverage: TaxonomyCoverage;
+
+  // --- 分類系統一：資料夾 ---
   folderTree: ReturnType<typeof buildFolderTree>;
+  /** 選到 `UNFILED` 代表正在看「未歸檔」桶子。 */
   selectedFolder: string;
   setSelectedFolder: (path: string) => void;
+  unfiledCount: number;
 
+  // --- 分類系統二：標籤 ---
   tagCounts: ReturnType<typeof buildTagCounts>;
   selectedTags: string[];
   toggleTag: (tag: string) => void;
   clearTags: () => void;
+  /** 正在看「未標記」桶子。 */
+  showUntagged: boolean;
+  setShowUntagged: (value: boolean) => void;
+  untaggedCount: number;
 
   query: string;
   setQuery: (query: string) => void;
@@ -71,7 +107,8 @@ export interface KnowledgeBaseApi {
 export function useKnowledgeBase(
   options: UseKnowledgeBaseOptions = {},
 ): KnowledgeBaseApi {
-  const { seedIfEmpty = false, askOptions } = options;
+  const { seedIfEmpty = false, askOptions, mode = 'both' } = options;
+  const kinds = useMemo(() => activeKinds(mode), [mode]);
 
   // store 只建一次。呼叫端每次 render 傳新的 store 進來是誤用，這裡以第一次為準。
   const [store] = useState<KnowledgeStore>(
@@ -82,9 +119,11 @@ export function useKnowledgeBase(
   const [emptyFolders, setEmptyFolders] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const [view, setView] = useState<ViewMode>('folder');
+  // 只啟用一套系統時，預設視角就是那一套。
+  const [view, setView] = useState<ViewMode>(kinds[0] ?? 'folder');
   const [selectedFolder, setSelectedFolder] = useState<string>(ROOT);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [showUntagged, setShowUntagged] = useState(false);
   const [query, setQuery] = useState('');
 
   const refresh = useCallback(async () => {
@@ -121,18 +160,26 @@ export function useKnowledgeBase(
   );
   const tagCounts = useMemo(() => buildTagCounts(docs), [docs]);
 
+  const folderCoverage = useMemo(() => coverage(docs, 'folder'), [docs]);
+  const tagCoverage = useMemo(() => coverage(docs, 'tag'), [docs]);
+  const unfiledCount = useMemo(() => countUnfiled(docs), [docs]);
+  const untaggedCount = useMemo(() => countUntagged(docs), [docs]);
+
   const visibleDocs = useMemo(() => {
-    // 兩種視角只差在「用什麼篩」，篩完之後的搜尋和排序完全共用。
+    // 兩個視角篩出來的**成員本身就不一樣** —— 這不是同一份集合的兩種排列。
+    // 只有搜尋和排序是共用的。
     const scoped =
       view === 'folder'
         ? filterByFolder(docs, selectedFolder)
-        : filterByTags(docs, selectedTags);
+        : filterByTags(docs, selectedTags, 'and', showUntagged);
 
     if (query.trim().length === 0) return sortDocs(scoped);
     return searchDocs(scoped, query).map((result) => result.doc);
-  }, [docs, view, selectedFolder, selectedTags, query]);
+  }, [docs, view, selectedFolder, selectedTags, showUntagged, query]);
 
   const toggleTag = useCallback((tag: string) => {
+    // 選了具體標籤就不可能同時在看「未標記」，兩者互斥。
+    setShowUntagged(false);
     setSelectedTags((current) =>
       current.includes(tag)
         ? current.filter((t) => t !== tag)
@@ -140,7 +187,15 @@ export function useKnowledgeBase(
     );
   }, []);
 
-  const clearTags = useCallback(() => setSelectedTags([]), []);
+  const clearTags = useCallback(() => {
+    setSelectedTags([]);
+    setShowUntagged(false);
+  }, []);
+
+  const selectUntagged = useCallback((value: boolean) => {
+    setShowUntagged(value);
+    if (value) setSelectedTags([]);
+  }, []);
 
   const addFolder = useCallback(
     async (path: string) => {
@@ -168,11 +223,11 @@ export function useKnowledgeBase(
 
   const importContent = useCallback(
     async (input: string | MeetingJson, ingestOptions?: IngestTextOptions) => {
-      const result = await ingest(store, input, ingestOptions);
+      const result = await ingest(store, input, { mode, ...ingestOptions });
       await refresh();
       return result;
     },
-    [store, refresh],
+    [store, refresh, mode],
   );
 
   const askQuestion = useCallback(
@@ -189,23 +244,36 @@ export function useKnowledgeBase(
     await seed(store, { reset: true });
     setSelectedFolder(ROOT);
     setSelectedTags([]);
+    setShowUntagged(false);
     setQuery('');
     await refresh();
   }, [store, refresh]);
+
+  const selectFolder = useCallback((path: string) => {
+    setSelectedFolder(path);
+  }, []);
 
   return {
     docs,
     visibleDocs,
     loading,
+    mode,
+    kinds,
     view,
     setView,
+    folderCoverage,
+    tagCoverage,
     folderTree,
     selectedFolder,
-    setSelectedFolder,
+    setSelectedFolder: selectFolder,
+    unfiledCount,
     tagCounts,
     selectedTags,
     toggleTag,
     clearTags,
+    showUntagged,
+    setShowUntagged: selectUntagged,
+    untaggedCount,
     query,
     setQuery,
     addFolder,
