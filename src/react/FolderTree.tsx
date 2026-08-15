@@ -50,7 +50,7 @@ function FolderRow({ node, depth, selected, onSelect }: RowProps) {
           aria-current={isSelected ? 'true' : undefined}
         >
           <span className="kb-folder-icon" aria-hidden="true">
-            {node.path === ROOT ? '🗄️' : open && hasChildren ? '📂' : '📁'}
+            {node.path === ROOT ? '⌂' : open && hasChildren ? '▾' : '□'}
           </span>
           <span className="kb-folder-label">
             {node.path === ROOT ? '全部知識' : node.name}
@@ -119,7 +119,7 @@ export function FolderTree({
           onClick={() => onSelect(UNFILED)}
           aria-current={selected === UNFILED ? 'true' : undefined}
         >
-          <span aria-hidden="true">📥</span>
+          <span className="kb-unclassified-icon" aria-hidden="true">↙</span>
           <span className="kb-folder-label">未歸檔</span>
           <span className="kb-folder-count">{unfiledCount}</span>
         </button>

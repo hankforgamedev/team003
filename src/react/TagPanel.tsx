@@ -75,7 +75,7 @@ export function TagPanel({
           onClick={() => onShowUntagged(!showUntagged)}
           aria-pressed={showUntagged}
         >
-          <span aria-hidden="true">🏷️</span>
+          <span className="kb-unclassified-icon" aria-hidden="true">#</span>
           <span className="kb-folder-label">未標記</span>
           <span className="kb-folder-count">{untaggedCount}</span>
         </button>

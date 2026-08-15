@@ -142,7 +142,10 @@ export function KnowledgeBase({
   return (
     <div className="kb-root">
       <header className="kb-header">
-        <h1 className="kb-heading">知識庫</h1>
+        <div className="kb-brand">
+          <span className="kb-brand-kicker">DATABASE / 資料庫</span>
+          <h1 className="kb-heading">把資料變成能立即取用的知識。</h1>
+        </div>
 
         <nav className="kb-tabs" aria-label="知識庫功能">
           {(
@@ -224,7 +227,8 @@ export function KnowledgeBase({
                   onClick={() => kb.setView('folder')}
                   aria-pressed={kb.view === 'folder'}
                 >
-                  📁 資料夾
+                  <span className="kb-view-icon" aria-hidden="true">□</span>
+                  <span>資料夾</span>
                   <span className="kb-view-coverage">
                     {kb.folderCoverage.classified}/{kb.folderCoverage.total}
                   </span>
@@ -235,7 +239,8 @@ export function KnowledgeBase({
                   onClick={() => kb.setView('tag')}
                   aria-pressed={kb.view === 'tag'}
                 >
-                  🏷️ 標籤
+                  <span className="kb-view-icon" aria-hidden="true">#</span>
+                  <span>標籤</span>
                   <span className="kb-view-coverage">
                     {kb.tagCoverage.classified}/{kb.tagCoverage.total}
                   </span>
@@ -287,6 +292,7 @@ export function KnowledgeBase({
               value={kb.query}
               placeholder="搜尋這個範圍裡的知識…"
               onChange={(event) => kb.setQuery(event.target.value)}
+              aria-label="搜尋知識"
             />
             <DocList
               docs={kb.visibleDocs}
