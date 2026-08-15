@@ -12,6 +12,12 @@ import { AiProvider, Deal, Meeting, ViewRole } from "@/lib/types";
 import { normalizeAiProvider } from "@/lib/ai/provider-config";
 import { buildIntegrationTestSeed } from "@/lib/data/integration-test";
 import { resetKbWithMeetings, syncMeetingToKb } from "@/lib/kb/store";
+import type { LineIntegrationRecord } from "@/lib/integrations/line-types";
+import {
+  dealIdForLineCustomer,
+  lineRecordToDeal,
+  lineRecordToMeeting,
+} from "@/lib/integrations/line-client";
 
 const DEFAULT_SEED_VERSION = "integration-30-v1";
 
@@ -24,6 +30,8 @@ interface SalesState {
   view: ViewRole;
   aiProvider: AiProvider;
   aiLive: boolean | null; // null = 尚未檢查；true = 目前選取的文字 AI provider 可用
+  lineImportedRecordIds: string[];
+  lineLastSyncedAt: string | null;
   setView: (v: ViewRole) => void;
   setAiProvider: (v: AiProvider) => void;
   setAiLive: (v: boolean | null) => void;
@@ -33,6 +41,7 @@ interface SalesState {
   addMeeting: (m: Meeting) => void;
   addDeal: (d: Deal) => void;
   updateDeal: (id: string, patch: Partial<Deal>) => void;
+  syncLineRecords: (records: LineIntegrationRecord[]) => void;
 }
 
 function buildSeed() {
@@ -51,6 +60,12 @@ function sanitizePersistedState(persisted: unknown): Partial<SalesState> {
   if (Array.isArray(raw.meetings)) state.meetings = raw.meetings as Meeting[];
   if (raw.view === "rep" || raw.view === "manager") state.view = raw.view;
   if (raw.aiProvider !== undefined) state.aiProvider = normalizeAiProvider(raw.aiProvider);
+  if (Array.isArray(raw.lineImportedRecordIds)) {
+    state.lineImportedRecordIds = raw.lineImportedRecordIds.filter((value): value is string => typeof value === "string");
+  }
+  if (typeof raw.lineLastSyncedAt === "string" || raw.lineLastSyncedAt === null) {
+    state.lineLastSyncedAt = raw.lineLastSyncedAt;
+  }
 
   return state;
 }
@@ -66,6 +81,8 @@ export const useSales = create<SalesState>()(
       view: "rep",
       aiProvider: "bedrock",
       aiLive: null,
+      lineImportedRecordIds: [],
+      lineLastSyncedAt: null,
       setView: (v) => set({ view: v }),
       setAiProvider: (v) => set({ aiProvider: v, aiLive: null }),
       setAiLive: (v) => set({ aiLive: v }),
@@ -76,8 +93,8 @@ export const useSales = create<SalesState>()(
         const stale = seededAt && Date.now() - new Date(seededAt).getTime() > 3 * 24 * 3600 * 1000;
         const needsMigration = seedVersion !== DEFAULT_SEED_VERSION;
         if (!seededAt || stale || needsMigration) {
-          const userDeals = get().deals.filter((d) => /^d-\d+$/.test(d.id));
-          const userMeetings = get().meetings.filter((m) => /^m-\d+$/.test(m.id));
+          const userDeals = get().deals.filter((d) => /^d-\d+$/.test(d.id) || d.id.startsWith("line-deal-"));
+          const userMeetings = get().meetings.filter((m) => /^m-\d+$/.test(m.id) || m.id.startsWith("line-"));
           const seed = buildSeed();
           set({
             ...seed,
@@ -92,12 +109,12 @@ export const useSales = create<SalesState>()(
       },
       resetDemo: async () => {
         const seed = buildSeed();
-        set({ ...seed, view: "rep" });
+        set({ ...seed, view: "rep", lineImportedRecordIds: [], lineLastSyncedAt: null });
         await resetKbWithMeetings(seed.meetings).catch((e) => console.warn("reset KB failed", e));
       },
       resetIntegrationTestData: async () => {
         const seed = buildIntegrationTestSeed();
-        set({ ...seed, view: "manager" });
+        set({ ...seed, view: "manager", lineImportedRecordIds: [], lineLastSyncedAt: null });
         await resetKbWithMeetings(seed.meetings).catch((e) => console.warn("reset KB failed", e));
       },
       addMeeting: (m) => {
@@ -108,6 +125,47 @@ export const useSales = create<SalesState>()(
       addDeal: (d) => set({ deals: [d, ...get().deals] }),
       updateDeal: (id, patch) =>
         set({ deals: get().deals.map((d) => (d.id === id ? { ...d, ...patch } : d)) }),
+      syncLineRecords: (records) => {
+        const assigned = records.filter((record) => record.assigned);
+        if (!assigned.length) {
+          set({ lineLastSyncedAt: new Date().toISOString() });
+          return;
+        }
+
+        const current = get();
+        const imported = new Set(current.lineImportedRecordIds);
+        const newMeetings = assigned.map(lineRecordToMeeting);
+        const meetingById = new Map(current.meetings.map((meeting) => [meeting.id, meeting]));
+        newMeetings.forEach((meeting) => meetingById.set(meeting.id, meeting));
+
+        const grouped = new Map<string, LineIntegrationRecord[]>();
+        assigned.forEach((record) => {
+          const key = dealIdForLineCustomer(record);
+          grouped.set(key, [...(grouped.get(key) ?? []), record]);
+        });
+        const dealById = new Map(current.deals.map((deal) => [deal.id, deal]));
+        grouped.forEach((customerRecords, dealId) => {
+          const sorted = [...customerRecords].sort((a, b) => b.receivedAt.localeCompare(a.receivedAt));
+          const meetingIds = sorted.map((record) => `line-${record.id}`);
+          const next = lineRecordToDeal(sorted[0]!, meetingIds);
+          const previous = dealById.get(dealId);
+          dealById.set(dealId, previous ? { ...previous, ...next, meetingIds } : next);
+        });
+
+        set({
+          meetings: [...meetingById.values()].sort((left, right) => right.date.localeCompare(left.date)),
+          deals: [...dealById.values()],
+          lineImportedRecordIds: Array.from(new Set([...current.lineImportedRecordIds, ...assigned.map((record) => record.id)])),
+          lineLastSyncedAt: new Date().toISOString(),
+        });
+
+        assigned
+          .filter((record) => !imported.has(record.id))
+          .map(lineRecordToMeeting)
+          .forEach((meeting) => {
+            void syncMeetingToKb(meeting).catch((e) => console.warn("sync LINE meeting to KB failed", e));
+          });
+      },
     }),
     {
       name: "sales-next-store-v1",
@@ -125,6 +183,8 @@ export const useSales = create<SalesState>()(
         meetings: s.meetings,
         view: s.view,
         aiProvider: s.aiProvider,
+        lineImportedRecordIds: s.lineImportedRecordIds,
+        lineLastSyncedAt: s.lineLastSyncedAt,
       }),
     }
   )

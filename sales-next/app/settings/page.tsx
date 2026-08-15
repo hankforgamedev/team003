@@ -6,6 +6,7 @@ import { useSales } from "@/lib/store";
 import { AI_PROVIDER_OPTIONS, aiProviderLabel } from "@/lib/ai/provider-config";
 import { Card, SectionTitle } from "@/components/ui";
 import type { AiProvider } from "@/lib/types";
+import { LineConnectionCard } from "@/components/LineConnectionCard";
 
 export default function SettingsPage() {
   const { aiProvider, setAiProvider, aiLive, resetDemo, deals, meetings } = useSales();
@@ -93,6 +94,8 @@ export default function SettingsPage() {
           </p>
         </div>
       </Card>
+
+      <LineConnectionCard />
 
       <Card>
         <SectionTitle>
