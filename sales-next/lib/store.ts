@@ -26,7 +26,7 @@ interface SalesState {
   aiLive: boolean | null; // null = 尚未檢查；true = 目前選取的文字 AI provider 可用
   setView: (v: ViewRole) => void;
   setAiProvider: (v: AiProvider) => void;
-  setAiLive: (v: boolean) => void;
+  setAiLive: (v: boolean | null) => void;
   seedIfNeeded: () => void;
   resetDemo: () => Promise<void>;
   resetIntegrationTestData: () => Promise<void>;
