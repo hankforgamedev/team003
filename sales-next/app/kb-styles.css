@@ -1,0 +1,368 @@
+/*
+ * team003 知識庫的視覺對齊層。
+ *
+ * team003 已經把整套顏色抽成 `--kb-*` 變數並定義在 `.kb-root`，
+ * 這裡只做兩件事：
+ *   1. 把變數換成 sales-next 的設計 tokens（顏色、圓角）
+ *   2. 微調版型讓 KB 卡在 sales-next 的 <main> container 裡不會怪
+ * 不動 team003 的 class 命名或結構。
+ */
+
+.kb-root {
+  --kb-bg: var(--color-surface);
+  --kb-surface: var(--color-bg);
+  --kb-border: var(--color-line);
+  --kb-text: var(--color-ink);
+  --kb-text-dim: var(--color-muted);
+  --kb-accent: var(--color-primary);
+  --kb-accent-soft: var(--color-primary-soft);
+  --kb-warn: var(--color-warn);
+  --kb-warn-soft: var(--color-warn-soft);
+  --kb-danger: var(--color-bad);
+  --kb-radius: 12px;
+
+  /* sales-next 的 <main> 沒有固定高度，讓 KB 依內容成長；
+     瀏覽分頁 body 內部改用 max-height 支撐三欄捲動。 */
+  height: auto;
+  min-height: calc(100dvh - 200px);
+  font-family: var(--font-sans);
+  background: transparent;
+  padding: 0;
+}
+
+/* 深色模式不啟用：sales-next 是純亮色 SaaS，不繼承 team003 的 dark mode */
+@media (prefers-color-scheme: dark) {
+  .kb-root {
+    --kb-bg: var(--color-surface);
+    --kb-surface: var(--color-bg);
+    --kb-border: var(--color-line);
+    --kb-text: var(--color-ink);
+    --kb-text-dim: var(--color-muted);
+    --kb-accent: var(--color-primary);
+    --kb-accent-soft: var(--color-primary-soft);
+    --kb-warn: var(--color-warn);
+    --kb-warn-soft: var(--color-warn-soft);
+    --kb-danger: var(--color-bad);
+  }
+}
+
+/* 頁標對齊 sales-next 的 h1 風格（黑體、緊字距） */
+.kb-heading {
+  font-size: 1.5rem;
+  font-weight: 900;
+  letter-spacing: -0.015em;
+  color: var(--color-ink);
+}
+
+/* header 加點下方留白，跟其他頁一致 */
+.kb-header {
+  padding: 4px 0 14px;
+  border-bottom: 1px solid var(--color-line);
+}
+
+/* tab 樣式對齊 sales-next 的膠囊按鈕 */
+.kb-tab {
+  border-radius: 999px;
+  padding: 6px 14px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--color-ink-2);
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.kb-tab:hover {
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
+}
+.kb-tab.is-active {
+  background: var(--color-primary);
+  color: #fff;
+}
+
+/* 按鈕：對齊 sales-next 卡片按鈕質感 */
+.kb-btn {
+  border-radius: 10px;
+  border: 1px solid var(--color-line);
+  background: var(--color-surface);
+  color: var(--color-ink);
+  font-weight: 600;
+  transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease;
+  box-shadow: var(--shadow-card);
+}
+.kb-btn:hover {
+  border-color: color-mix(in srgb, var(--color-primary) 35%, var(--color-line));
+  color: var(--color-primary);
+}
+.kb-btn-ghost {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+}
+.kb-btn-ghost:hover {
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
+}
+.kb-btn-danger {
+  color: var(--color-bad);
+  border-color: color-mix(in srgb, var(--color-bad) 35%, transparent);
+}
+
+/* 三欄版面：sales-next 內容區寬度有限，稍微收窄側欄留內容空間 */
+.kb-body {
+  grid-template-columns: 200px minmax(240px, 1fr) minmax(280px, 1.3fr);
+  gap: 14px;
+  min-height: calc(100dvh - 260px);
+}
+
+.kb-sidebar,
+.kb-main,
+.kb-detail {
+  background: var(--color-surface);
+  border: 1px solid var(--color-line);
+  border-radius: 16px;
+  box-shadow: var(--shadow-card);
+  padding: 14px;
+}
+
+/* 搜尋輸入對齊 sales-next 的 input 風格 */
+.kb-input,
+.kb-search,
+.kb-ask-input {
+  border-radius: 12px;
+  border: 1px solid var(--color-line);
+  background: var(--color-bg);
+  padding: 10px 12px;
+  font-size: 0.875rem;
+  color: var(--color-ink);
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+.kb-input:focus,
+.kb-search:focus,
+.kb-ask-input:focus {
+  border-color: var(--color-primary);
+  background: var(--color-surface);
+  outline: none;
+}
+
+/* 視角切換：對齊 sales-next 頂欄的膠囊 toggle */
+.kb-view-switch {
+  display: flex;
+  padding: 3px;
+  border-radius: 999px;
+  border: 1px solid var(--color-line);
+  background: var(--color-bg);
+  gap: 2px;
+}
+.kb-view-btn {
+  flex: 1;
+  border: none;
+  background: transparent;
+  border-radius: 999px;
+  padding: 6px 10px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-ink-2);
+  cursor: pointer;
+}
+.kb-view-btn.is-active {
+  background: var(--color-primary);
+  color: #fff;
+  box-shadow: 0 4px 12px -4px color-mix(in srgb, var(--color-primary) 55%, transparent);
+}
+.kb-view-coverage {
+  margin-left: 4px;
+  font-variant-numeric: tabular-nums;
+  opacity: 0.85;
+}
+
+/* 說明文字（涵蓋率提示） */
+.kb-taxonomy-note {
+  font-size: 0.75rem;
+  color: var(--color-muted);
+  line-height: 1.55;
+  margin: 8px 2px 12px;
+}
+
+/* 文件列表項 */
+.kb-doc-item {
+  border-radius: 12px;
+  border: 1px solid transparent;
+  padding: 10px 12px;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+.kb-doc-item:hover {
+  background: var(--color-primary-soft);
+  border-color: color-mix(in srgb, var(--color-primary) 25%, transparent);
+}
+.kb-doc-item.is-selected {
+  background: var(--color-primary-soft);
+  border-color: var(--color-primary);
+}
+.kb-doc-title {
+  font-weight: 700;
+  color: var(--color-ink);
+}
+.kb-doc-preview,
+.kb-doc-meta,
+.kb-doc-date,
+.kb-doc-path {
+  color: var(--color-muted);
+}
+
+/* 徽章：SOP/FAQ/型錄 用 sales-next 語意色 */
+.kb-badge {
+  border-radius: 999px;
+  padding: 2px 8px;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  border: 1px solid transparent;
+}
+.kb-badge-sop {
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
+}
+.kb-badge-faq {
+  background: var(--color-good-soft);
+  color: var(--color-good);
+}
+.kb-badge-catalog {
+  background: var(--color-warn-soft);
+  color: var(--color-warn);
+}
+.kb-badge-unclassified {
+  background: var(--color-bg);
+  color: var(--color-muted);
+}
+.kb-badge-auto {
+  background: color-mix(in srgb, var(--color-primary) 12%, var(--color-surface));
+  color: var(--color-primary);
+  border-color: color-mix(in srgb, var(--color-primary) 25%, transparent);
+}
+
+/* 問答面板 */
+.kb-ask {
+  background: var(--color-surface);
+  border: 1px solid var(--color-line);
+  border-radius: 16px;
+  padding: 18px;
+  box-shadow: var(--shadow-card);
+  min-height: calc(100dvh - 220px);
+}
+.kb-answer {
+  background: var(--color-bg);
+  border-radius: 12px;
+  padding: 14px;
+  border: 1px solid var(--color-line);
+}
+.kb-answer-head {
+  font-weight: 700;
+  color: var(--color-ink);
+}
+.kb-answer-note {
+  color: var(--color-warn);
+  font-size: 0.75rem;
+}
+
+/* 引文卡 */
+.kb-citation {
+  border-radius: 12px;
+  border: 1px solid var(--color-line);
+  background: var(--color-surface);
+  padding: 10px 12px;
+  transition: border-color 0.15s ease, background 0.15s ease;
+  cursor: pointer;
+}
+.kb-citation:hover {
+  border-color: color-mix(in srgb, var(--color-primary) 40%, transparent);
+  background: var(--color-primary-soft);
+}
+.kb-citation-index {
+  background: var(--color-primary);
+  color: #fff;
+  border-radius: 999px;
+  padding: 2px 8px;
+  font-size: 0.6875rem;
+  font-weight: 700;
+}
+
+/* 匯入面板 dropzone */
+.kb-dropzone {
+  border: 2px dashed var(--color-line);
+  border-radius: 16px;
+  background: var(--color-bg);
+  padding: 32px 18px;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+.kb-dropzone:hover,
+.kb-dropzone.is-active {
+  border-color: var(--color-primary);
+  background: var(--color-primary-soft);
+}
+
+/* 標籤芯片 */
+.kb-chip {
+  border-radius: 999px;
+  border: 1px solid var(--color-line);
+  padding: 4px 10px;
+  font-size: 0.75rem;
+  color: var(--color-ink-2);
+  background: var(--color-surface);
+  transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease;
+}
+.kb-chip:hover {
+  border-color: color-mix(in srgb, var(--color-primary) 35%, transparent);
+  color: var(--color-primary);
+}
+.kb-chip.is-active {
+  background: var(--color-primary);
+  color: #fff;
+  border-color: var(--color-primary);
+}
+
+/* 快捷鍵標籤 */
+.kb-kbd {
+  background: var(--color-bg);
+  border: 1px solid var(--color-line);
+  border-radius: 6px;
+  padding: 1px 6px;
+  font-size: 0.6875rem;
+  font-family: var(--font-dm), monospace;
+  color: var(--color-ink-2);
+}
+
+/* 命令面板 */
+.kb-palette-backdrop {
+  background: rgba(15, 27, 51, 0.35);
+  backdrop-filter: blur(4px);
+}
+.kb-palette {
+  background: var(--color-surface);
+  border-radius: 16px;
+  box-shadow: var(--shadow-pop);
+  border: 1px solid var(--color-line);
+}
+.kb-palette-input {
+  background: transparent;
+  color: var(--color-ink);
+  border: none;
+  padding: 14px 16px;
+  font-size: 1rem;
+}
+.kb-palette-item.is-selected {
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
+}
+
+/* 空狀態 */
+.kb-detail-empty,
+.kb-empty-hint,
+.kb-doc-list-empty {
+  color: var(--color-muted);
+}
+
+/* 手機版：疊成單欄 */
+@media (max-width: 900px) {
+  .kb-body {
+    grid-template-columns: 1fr;
+  }
+}

@@ -1,0 +1,99 @@
+@import "tailwindcss";
+
+/* Sales Next 設計 tokens — 淺色專業 SaaS＋深藍側欄（對齊產品 mockup） */
+@theme {
+  --color-bg: #f4f6fb;
+  --color-surface: #ffffff;
+  --color-ink: #0f1b33;
+  --color-ink-2: #44536f;
+  --color-muted: #7484a2;
+  --color-line: #e4e9f4;
+  --color-primary: #2456e6;
+  --color-primary-deep: #16308f;
+  --color-primary-soft: #eaf0fe;
+  --color-good: #0e9f6e;
+  --color-good-soft: #e6f6f0;
+  --color-warn: #b45309;
+  --color-warn-soft: #fdf3e4;
+  --color-bad: #e02d3c;
+  --color-bad-soft: #fdecee;
+  --color-navy-1: #1b2b4d;
+  --color-navy-2: #152039;
+  --color-series-2: #e8700a;
+
+  --font-sans: var(--font-noto), var(--font-dm), sans-serif;
+
+  --shadow-card: 0 1px 2px rgba(15, 27, 51, 0.04), 0 8px 24px -12px rgba(15, 27, 51, 0.12);
+  --shadow-pop: 0 12px 32px -8px rgba(15, 27, 51, 0.18);
+}
+
+html {
+  font-family: var(--font-sans);
+}
+
+body {
+  background: var(--color-bg);
+  color: var(--color-ink);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* 卡片 */
+.card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-line);
+  border-radius: 16px;
+  box-shadow: var(--shadow-card);
+}
+
+/* 數字用 DM Sans（tabular） */
+.num {
+  font-family: var(--font-dm), var(--font-noto), sans-serif;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+
+/* 進場動畫 */
+@keyframes rise {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.rise { animation: rise 0.5s cubic-bezier(0.16, 1, 0.3, 1) both; }
+.rise-1 { animation-delay: 0.05s; }
+.rise-2 { animation-delay: 0.12s; }
+.rise-3 { animation-delay: 0.19s; }
+.rise-4 { animation-delay: 0.26s; }
+
+@keyframes pulseDot {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+.pulse-dot { animation: pulseDot 1.2s ease-in-out infinite; }
+
+@keyframes typein {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.typein { animation: typein 0.35s ease-out both; }
+
+/* 側欄項目 */
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.6rem 0.85rem;
+  border-radius: 10px;
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 0.9rem;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.nav-item:hover { background: rgba(255, 255, 255, 0.08); color: #fff; }
+.nav-item.active {
+  background: linear-gradient(135deg, #2456e6, #4a63ef);
+  color: #fff;
+  box-shadow: 0 6px 16px -6px rgba(36, 86, 230, 0.55);
+}
+
+/* 捲軸 */
+.scroll-slim::-webkit-scrollbar { width: 6px; height: 6px; }
+.scroll-slim::-webkit-scrollbar-thumb { background: #cdd6e8; border-radius: 999px; }
+.scroll-slim::-webkit-scrollbar-track { background: transparent; }
