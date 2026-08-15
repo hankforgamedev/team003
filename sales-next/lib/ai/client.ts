@@ -3,10 +3,11 @@
 // 前端 AI 呼叫層：優先走 server API（真 AI），任何失敗（無 key／斷網／逾時）都無縫回退 Demo 引擎。
 // 這就是「Demo 當天零風險」的保險絲。
 
-import { MeetingExtraction, NBAResult, Deal, TranscriptSegment } from "@/lib/types";
+import { AiProvider, MeetingExtraction, NBAResult, Deal, TranscriptSegment } from "@/lib/types";
 import { heuristicExtract } from "@/lib/ai/demo-engine";
 import { runNbaRules } from "@/lib/ai/nba-rules";
 import { normalizeExtraction } from "@/lib/pipeline";
+import { DEFAULT_AI_PROVIDER } from "@/lib/ai/provider-config";
 
 async function post<T>(url: string, body: BodyInit | object, timeoutMs = 60000): Promise<T | null> {
   try {
@@ -30,9 +31,9 @@ async function post<T>(url: string, body: BodyInit | object, timeoutMs = 60000):
   }
 }
 
-export async function checkAiLive(): Promise<boolean> {
+export async function checkAiLive(provider: AiProvider = DEFAULT_AI_PROVIDER): Promise<boolean> {
   try {
-    const res = await fetch("/api/health");
+    const res = await fetch(`/api/health?provider=${provider}`);
     const data = await res.json();
     return Boolean(data.aiLive);
   } catch {
@@ -54,8 +55,11 @@ function fileForm(file: File): FormData {
   return fd;
 }
 
-export async function aiExtract(transcript: string): Promise<{ extraction: MeetingExtraction; live: boolean }> {
-  const data = await post<{ extraction: MeetingExtraction }>("/api/extract", { transcript });
+export async function aiExtract(
+  transcript: string,
+  provider: AiProvider = DEFAULT_AI_PROVIDER,
+): Promise<{ extraction: MeetingExtraction; live: boolean }> {
+  const data = await post<{ extraction: MeetingExtraction }>("/api/extract", { transcript, provider });
   if (data?.extraction) {
     const e = data.extraction;
     return {
@@ -76,13 +80,15 @@ export async function aiExtract(transcript: string): Promise<{ extraction: Meeti
 export async function aiNba(
   extraction: MeetingExtraction,
   allDeals: Deal[],
-  transcriptSummary?: string
+  transcriptSummary?: string,
+  provider: AiProvider = DEFAULT_AI_PROVIDER,
 ): Promise<NBAResult> {
   const ruleResult = runNbaRules(extraction, allDeals);
   const data = await post<{ result: { actions: NBAResult["actions"]; reasoning?: string[] } }>("/api/nba", {
     extraction,
     ruleResult,
     transcriptSummary,
+    provider,
   });
   if (data?.result?.actions?.length) {
     return {
@@ -95,4 +101,4 @@ export async function aiNba(
 }
 
 // 知識庫問答已改由 @sales-next/knowledge-base 模組處理，
-// 走 /api/kb-ask（Bedrock），失敗自動降級成內建抽取式回答。
+// 走 /api/kb-ask（Settings provider），失敗自動降級成內建抽取式回答。

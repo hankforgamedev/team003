@@ -4,7 +4,7 @@
 // - 舊的 KnowledgeCard 六分類已捨棄，改用團 003 的資料夾＋標籤雙獨立分類
 // - store 用單例 LocalStorageStore，第一次載入時把 sales-next 的會議 seed 進來
 // - onOpenMeeting 導到會議詳細頁
-// - LlmProvider 走 /api/kb-ask（目前接 OpenAI GPT），失敗自動降級成內建抽取式回答
+// - LlmProvider 走 /api/kb-ask（依 Settings 切 Bedrock/OpenAI），失敗自動降級成內建抽取式回答
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -18,6 +18,7 @@ export default function KnowledgePage() {
   const router = useRouter();
   const meetings = useSales((s) => s.meetings);
   const hydrated = useSales((s) => s.hydrated);
+  const aiProvider = useSales((s) => s.aiProvider);
 
   const [store, setStore] = useState<KnowledgeStore | null>(null);
 
@@ -30,7 +31,7 @@ export default function KnowledgePage() {
     void seedKbFromMeetings(meetings);
   }, [hydrated, meetings]);
 
-  const askOptions = useMemo(() => ({ provider: createServerLlmProvider() }), []);
+  const askOptions = useMemo(() => ({ provider: createServerLlmProvider(aiProvider) }), [aiProvider]);
 
   if (!store) {
     return (

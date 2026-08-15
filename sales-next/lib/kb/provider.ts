@@ -1,10 +1,12 @@
 // 客戶端 LlmProvider：把問題和檢索到的 context 送到我們的 API route，
-// route 那邊目前會呼叫 OpenAI GPT。失敗會丟 error，team003 的 ask() 會自動降級成
+// route 那邊依 Settings 切換 Bedrock / OpenAI。失敗會丟 error，team003 的 ask() 會自動降級成
 // 抽取式回答（就是「原文摘錄」），所以 demo 當天 AWS 掛掉也不會開天窗。
 
 import type { LlmProvider } from "@sales-next/knowledge-base";
+import type { AiProvider } from "@/lib/types";
+import { DEFAULT_AI_PROVIDER } from "@/lib/ai/provider-config";
 
-export function createServerLlmProvider(): LlmProvider {
+export function createServerLlmProvider(provider: AiProvider = DEFAULT_AI_PROVIDER): LlmProvider {
   return {
     // team003 目前把 provider name 型別寫死成 bedrock；實際模型由 /api/kb-ask 決定。
     name: "bedrock",
@@ -12,7 +14,7 @@ export function createServerLlmProvider(): LlmProvider {
       const init: RequestInit = {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ question, context }),
+        body: JSON.stringify({ question, context, provider }),
       };
       if (signal) init.signal = signal;
 

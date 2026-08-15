@@ -1,12 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { Cpu, Database, RefreshCw, ShieldCheck, Smartphone } from "lucide-react";
+import { CheckCircle2, Cpu, Database, KeyRound, RefreshCw, ShieldCheck, Smartphone } from "lucide-react";
 import { useSales } from "@/lib/store";
+import { AI_PROVIDER_OPTIONS, aiProviderLabel } from "@/lib/ai/provider-config";
 import { Card, SectionTitle } from "@/components/ui";
 
 export default function SettingsPage() {
-  const { aiLive, resetDemo, deals, meetings } = useSales();
+  const { aiProvider, setAiProvider, aiLive, resetDemo, deals, meetings } = useSales();
+  const providerLabel = aiProviderLabel(aiProvider);
   const [resetting, setResetting] = useState(false);
   const [resetDone, setResetDone] = useState(false);
 
@@ -31,21 +33,56 @@ export default function SettingsPage() {
             <Cpu size={15} className="text-primary" /> AI 引擎
           </span>
         </SectionTitle>
-        <div className="flex items-center gap-3 rounded-xl bg-bg px-4 py-3">
+        <div className="grid gap-2 sm:grid-cols-2">
+          {AI_PROVIDER_OPTIONS.map((option) => {
+            const active = option.value === aiProvider;
+            return (
+              <button
+                key={option.value}
+                type="button"
+                onClick={() => setAiProvider(option.value)}
+                className={`rounded-xl border px-4 py-3 text-left transition ${
+                  active
+                    ? "border-primary bg-primary-soft text-primary"
+                    : "border-line bg-bg text-ink-2 hover:border-primary/40"
+                }`}
+              >
+                <span className="flex items-center justify-between gap-2 text-sm font-black">
+                  {option.label}
+                  {active && <CheckCircle2 size={16} />}
+                </span>
+                <span className="mt-1 block text-xs leading-relaxed text-ink-2">
+                  {option.description}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="mt-3 flex items-start gap-3 rounded-xl bg-bg px-4 py-3">
           <span className={`h-2.5 w-2.5 rounded-full ${aiLive ? "bg-good" : "bg-amber-400"}`} />
           <div className="text-sm">
-            <b>{aiLive ? "OpenAI 已連線" : "Demo 模式（內建引擎）"}</b>
+            <b>
+              {aiLive === null
+                ? `${providerLabel} 檢查中`
+                : aiLive
+                  ? `${providerLabel} 已連線`
+                  : `${providerLabel} 尚未完成設定`}
+            </b>
             <div className="mt-0.5 text-xs text-muted">
-              {aiLive
-                ? "語音轉寫（Whisper）、CRM 抽取、NBA 與知識庫問答都走 OpenAI GPT"
-                : "所有功能可用；部署時設定 OPENAI_API_KEY 環境變數即可升級為真 AI"}
+              CRM 抽取、Next Best Action 與知識庫問答會使用目前選取的 provider；語音轉寫仍使用 OpenAI Whisper。
             </div>
           </div>
         </div>
-        <p className="mt-3 text-xs leading-relaxed text-muted">
-          目前測試版先把原本的 AWS Bedrock 知識庫問答切到 OpenAI GPT API；之後要切回
-          Bedrock 或 Azure OpenAI，只需要換 server provider，產品端不需改動。
-        </p>
+        <div className="mt-3 rounded-xl border border-line bg-bg px-4 py-3 text-xs leading-relaxed text-muted">
+          <div className="mb-1 flex items-center gap-1.5 font-bold text-ink-2">
+            <KeyRound size={13} className="text-primary" /> 環境變數放在 .env.local
+          </div>
+          <p>
+            預設 provider 是 AWS Bedrock。Bedrock 請設定 BEDROCK_AWS_REGION/AWS_REGION 與 AWS 憑證；
+            切到 OpenAI GPT 時請設定 OPENAI_API_KEY。這些 key 只放 server 端，不會寫進瀏覽器。
+          </p>
+        </div>
       </Card>
 
       <Card>
@@ -59,7 +96,7 @@ export default function SettingsPage() {
             <b>錄音告知：</b>每次錄音前產品都會提示告知話術——臺灣個資法要求向與會者完成蒐集告知，同意後才開始。
           </li>
           <li>
-            <b>AI 不拿你的資料訓練：</b>透過 OpenAI API 處理的內容，依其政策不會用於模型訓練，僅短期保留作濫用防護。
+            <b>API Key 不進前端：</b>Bedrock / OpenAI 憑證只讀取 server 環境變數；瀏覽器只保存目前選用哪個 provider。
           </li>
           <li>
             <b>資料主權：</b>會議與案件資料屬於企業客戶；支援隨時匯出與刪除（示範版資料僅存於你的瀏覽器）。

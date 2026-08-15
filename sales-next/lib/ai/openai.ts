@@ -1,5 +1,5 @@
 // OpenAI 呼叫層（server-side only）。
-// 設計成可抽換：所有對外呼叫集中在這一檔，之後要換 provider（Anthropic/Bedrock/Azure）只動這裡。
+// Provider 分流在 llm.ts；這裡只保留 OpenAI GPT 與 Whisper 的實作。
 
 const API = "https://api.openai.com/v1";
 

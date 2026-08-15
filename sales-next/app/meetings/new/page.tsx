@@ -29,6 +29,7 @@ import { aiExtract, aiNba, aiTranscribe } from "@/lib/ai/client";
 import { Deal, Meeting, MeetingExtraction, NBAResult, TranscriptSegment } from "@/lib/types";
 import { Card, Chip, StageBadge } from "@/components/ui";
 import { dealForecast, dealProbability } from "@/lib/crm";
+import { aiProviderLabel } from "@/lib/ai/provider-config";
 import {
   PIPELINE_STEPS,
   PipelinePhase,
@@ -99,7 +100,8 @@ function cleanFallback(value?: string): string {
 
 export default function NewMeetingPage() {
   const router = useRouter();
-  const { deals, addDeal, addMeeting, aiLive } = useSales();
+  const { deals, addDeal, addMeeting, aiProvider, aiLive } = useSales();
+  const providerLabel = aiProviderLabel(aiProvider);
 
   const [draftMeetingId] = useState(() => generateMeetingId());
   const [meetingDate, setMeetingDate] = useState(() => todayInputValue());
@@ -166,7 +168,7 @@ export default function NewMeetingPage() {
     } else if (opts.preferCanned && !aiLive) {
       ext = normalizeExtraction({ ...DEMO_MEETING_EXTRACTION }, fullText);
     } else {
-      const r = await aiExtract(fullText);
+      const r = await aiExtract(fullText, aiProvider);
       live = r.live;
       // 示範會議如果真 AI 抽得不完整，用手工版補洞（雙保險）
       ext = opts.preferCanned
@@ -269,7 +271,7 @@ export default function NewMeetingPage() {
 
     // NBA
     setPhase("analysis");
-    const nbaResult = await aiNba(ext, deals, opts.title);
+    const nbaResult = await aiNba(ext, deals, opts.title, aiProvider);
     setNba(nbaResult);
 
     setPhase("knowledge");
@@ -359,7 +361,7 @@ export default function NewMeetingPage() {
       setError(
         aiLive
           ? "轉寫失敗，請再試一次，或改用示範會議／貼上逐字稿。"
-          : "音檔轉寫需要 OpenAI API Key（目前為 Demo 模式）。請改用「載入示範會議」或貼上逐字稿——功能完全相同。"
+          : "音檔轉寫需要 OPENAI_API_KEY；如果只測 pipeline，請改用「貼上逐字稿」或「載入示範會議」。"
       );
       return;
     }
@@ -529,7 +531,7 @@ export default function NewMeetingPage() {
               </span>
               <span className="font-bold">即時錄音</span>
               <span className="text-xs leading-relaxed text-muted">
-                用麥克風錄下會議，結束後自動轉寫與分析{aiLive ? "" : "（需 API Key，目前為 Demo 模式）"}
+                用麥克風錄下會議，轉寫使用 OpenAI Whisper，後續分析走 {providerLabel}
               </span>
             </button>
           )}
@@ -546,7 +548,7 @@ export default function NewMeetingPage() {
             </span>
             <span className="font-bold">上傳音檔</span>
             <span className="text-xs leading-relaxed text-muted">
-              支援 mp3 / m4a / wav / webm，會後補傳也可以{aiLive ? "" : "（需 API Key）"}
+              支援 mp3 / m4a / wav / webm，轉寫使用 OpenAI Whisper，後續分析走 {providerLabel}
             </span>
           </label>
 
@@ -609,7 +611,7 @@ export default function NewMeetingPage() {
         <Card className="flex h-[430px] flex-col">
           <div className="mb-2 flex items-center justify-between">
             <span className="text-sm font-bold">逐字稿</span>
-            <Chip tone="blue">{usedLive ? "OpenAI 即時分析" : "內建示範引擎"}</Chip>
+            <Chip tone="blue">{usedLive ? `${providerLabel} 即時分析` : "內建示範引擎"}</Chip>
           </div>
           <div ref={transcriptBoxRef} className="scroll-slim flex-1 space-y-2.5 overflow-y-auto pr-1">
             {lines.map((s, i) => (

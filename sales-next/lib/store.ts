@@ -8,7 +8,7 @@
 
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
-import { Deal, Meeting, ViewRole } from "@/lib/types";
+import { AiProvider, Deal, Meeting, ViewRole } from "@/lib/types";
 import { buildIntegrationTestSeed } from "@/lib/data/integration-test";
 import { resetKbWithMeetings, syncMeetingToKb } from "@/lib/kb/store";
 
@@ -21,8 +21,10 @@ interface SalesState {
   deals: Deal[];
   meetings: Meeting[];
   view: ViewRole;
-  aiLive: boolean | null; // null = 尚未檢查；true = 有 OPENAI_API_KEY
+  aiProvider: AiProvider;
+  aiLive: boolean | null; // null = 尚未檢查；true = 目前選取的文字 AI provider 可用
   setView: (v: ViewRole) => void;
+  setAiProvider: (v: AiProvider) => void;
   setAiLive: (v: boolean) => void;
   seedIfNeeded: () => void;
   resetDemo: () => Promise<void>;
@@ -45,8 +47,10 @@ export const useSales = create<SalesState>()(
       deals: [],
       meetings: [],
       view: "rep",
+      aiProvider: "bedrock",
       aiLive: null,
       setView: (v) => set({ view: v }),
+      setAiProvider: (v) => set({ aiProvider: v, aiLive: null }),
       setAiLive: (v) => set({ aiLive: v }),
       seedIfNeeded: () => {
         const { seededAt, seedVersion } = get();
@@ -97,6 +101,7 @@ export const useSales = create<SalesState>()(
         deals: s.deals,
         meetings: s.meetings,
         view: s.view,
+        aiProvider: s.aiProvider,
       }),
     }
   )

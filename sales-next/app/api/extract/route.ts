@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { chatJSON, hasKey } from "@/lib/ai/openai";
+import { chatJSONWithProvider, getAiProviderFromRequest } from "@/lib/ai/llm";
 
 const SCHEMA = {
   type: "object",
@@ -77,11 +77,17 @@ const SYSTEM = `你是 B2B 銷售會議的資訊抽取引擎。從逐字稿抽�
 - 逐字稿中沒有的資訊留空字串或空陣列，不要編造`;
 
 export async function POST(req: NextRequest) {
-  if (!hasKey()) return NextResponse.json({ demoMode: true });
   try {
-    const { transcript } = await req.json();
-    const extraction = await chatJSON(SYSTEM, `逐字稿：\n${transcript}`, "crm_extraction", SCHEMA);
-    return NextResponse.json({ extraction });
+    const { transcript, provider } = await req.json();
+    const aiProvider = getAiProviderFromRequest(provider);
+    const extraction = await chatJSONWithProvider(
+      aiProvider,
+      SYSTEM,
+      `逐字稿：\n${transcript}`,
+      "crm_extraction",
+      SCHEMA,
+    );
+    return NextResponse.json({ extraction, provider: aiProvider });
   } catch (e) {
     console.error("extract 失敗，回退 demo 模式", e);
     return NextResponse.json({ demoMode: true });

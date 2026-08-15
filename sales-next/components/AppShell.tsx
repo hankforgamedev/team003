@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { useSales } from "@/lib/store";
 import { checkAiLive } from "@/lib/ai/client";
+import { aiProviderLabel } from "@/lib/ai/provider-config";
 import { WorkspaceAnalysisStrip } from "@/components/PipelineAnalysis";
 
 const NAV = [
@@ -31,11 +32,11 @@ const NAV = [
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const { seedIfNeeded, hydrated, view, setView, aiLive, setAiLive } = useSales();
+  const { seedIfNeeded, hydrated, view, setView, aiProvider, aiLive, setAiLive } = useSales();
+  const providerLabel = aiProviderLabel(aiProvider);
 
   useEffect(() => {
     seedIfNeeded();
-    checkAiLive().then(setAiLive);
     if ("serviceWorker" in navigator) {
       if (process.env.NODE_ENV === "development") {
         navigator.serviceWorker
@@ -54,7 +55,11 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         navigator.serviceWorker.register("/sw.js").catch(() => {});
       }
     }
-  }, [seedIfNeeded, setAiLive]);
+  }, [seedIfNeeded]);
+
+  useEffect(() => {
+    checkAiLive(aiProvider).then(setAiLive);
+  }, [aiProvider, setAiLive]);
 
   const active = (href: string) =>
     href === "/" ? pathname === "/" : pathname.startsWith(href);
@@ -84,11 +89,11 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                 aiLive ? "bg-emerald-400" : "bg-amber-400"
               } pulse-dot`}
             />
-            {aiLive === null ? "AI 檢查中…" : aiLive ? "AI 已連線" : "Demo 模式"}
+            {aiLive === null ? "AI 檢查中…" : aiLive ? `${providerLabel} 已連線` : "Demo 模式"}
           </div>
           {aiLive
-            ? "OpenAI 即時轉寫與分析已啟用"
-            : "未偵測到 API Key，以內建示範引擎運作（完整功能可用）"}
+            ? `文字分析目前走 ${providerLabel}`
+            : `未偵測到 ${providerLabel} 設定，以內建示範引擎運作（完整功能可用）`}
         </div>
       </aside>
 

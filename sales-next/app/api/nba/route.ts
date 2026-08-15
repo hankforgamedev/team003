@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { chatJSON, hasKey } from "@/lib/ai/openai";
+import { chatJSONWithProvider, getAiProviderFromRequest } from "@/lib/ai/llm";
 
 const SCHEMA = {
   type: "object",
@@ -30,16 +30,17 @@ const SYSTEM = `你是 B2B 銷售顧問。根據會議抽取結果與「規則�
 - 不要發明會議中沒有的事實`;
 
 export async function POST(req: NextRequest) {
-  if (!hasKey()) return NextResponse.json({ demoMode: true });
   try {
-    const { extraction, ruleResult, transcriptSummary } = await req.json();
-    const result = await chatJSON(
+    const { extraction, ruleResult, transcriptSummary, provider } = await req.json();
+    const aiProvider = getAiProviderFromRequest(provider);
+    const result = await chatJSONWithProvider(
+      aiProvider,
       SYSTEM,
       `會議抽取結果：\n${JSON.stringify(extraction, null, 2)}\n\n規則引擎初步建議：\n${JSON.stringify(ruleResult, null, 2)}\n\n會議摘要：\n${transcriptSummary ?? ""}`,
       "nba_result",
-      SCHEMA
+      SCHEMA,
     );
-    return NextResponse.json({ result });
+    return NextResponse.json({ result, provider: aiProvider });
   } catch (e) {
     console.error("nba 失敗，回退 demo 模式", e);
     return NextResponse.json({ demoMode: true });

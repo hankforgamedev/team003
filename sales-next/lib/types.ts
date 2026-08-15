@@ -15,6 +15,7 @@ export type ContactRole = "經濟買家" | "決策者" | "使用者" | "技術�
 export type BudgetConfirmed = "已確認" | "估算中" | "未提及";
 export type UrgencyLevel = "高" | "中" | "低" | "未知";
 export type SentimentTone = "積極正向" | "中性觀望" | "保留疑慮" | "消極抗拒";
+export type AiProvider = "bedrock" | "openai";
 
 export type Stage = "lead" | "meeting" | "proposal" | "negotiation" | "won" | "lost";
 

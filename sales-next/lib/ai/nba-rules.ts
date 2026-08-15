@@ -1,6 +1,6 @@
 // Next Best Action 規則引擎（D 組：AI Recommendation Logic 的落地）
 // 設計原則：每一條建議都要「可解釋」——附上規則依據＋從自家歷史資料算出來的數字。
-// 有 OpenAI key 時，LLM 會在這些規則輸出的基礎上潤飾與補充；沒有 key 時規則引擎單獨運作。
+// 有可用 LLM provider 時，模型會在這些規則輸出的基礎上潤飾與補充；沒有 key 時規則引擎單獨運作。
 // 這也是回答評審「你們的建議憑什麼」的核心：規則來自顧問方法論，數字來自企業自己的資料。
 
 import { Deal, MeetingExtraction, NBAAction, NBAResult } from "@/lib/types";

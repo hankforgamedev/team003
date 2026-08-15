@@ -1,8 +1,16 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
+import { getAiProviderFromRequest, getAiProviderHealth } from "@/lib/ai/llm";
+import { hasKey as hasOpenAiKey } from "@/lib/ai/openai";
 
-export async function GET() {
+export async function GET(req: NextRequest) {
+  const provider = getAiProviderFromRequest(req.nextUrl.searchParams.get("provider"));
+  const health = getAiProviderHealth(provider);
   return NextResponse.json({
-    aiLive: Boolean(process.env.OPENAI_API_KEY),
-    model: process.env.OPENAI_MODEL || "gpt-5.6-terra",
+    aiLive: health.live,
+    provider: health.provider,
+    label: health.label,
+    model: health.model,
+    reason: health.reason,
+    transcriptionLive: hasOpenAiKey(),
   });
 }
