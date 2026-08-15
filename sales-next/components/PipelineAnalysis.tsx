@@ -19,26 +19,26 @@ export function WorkspaceAnalysisStrip() {
   const pipelineValue = openDeals.reduce((sum, deal) => sum + deal.budget, 0);
 
   return (
-    <div className="border-b border-line bg-surface/90 px-4 py-2.5 md:px-8">
-      <div className="mx-auto flex w-full max-w-[1180px] flex-col gap-2 text-xs text-ink-2 lg:flex-row lg:items-center lg:justify-between">
+    <div className="border-b-2 border-ink/15 bg-surface px-4 py-2.5 md:px-8">
+      <div className="mx-auto flex w-full max-w-[1180px] flex-col gap-2 text-xs text-ink lg:flex-row lg:items-center lg:justify-between">
         <div className="flex min-w-0 flex-wrap items-center gap-2.5">
-          <span className="flex items-center gap-1.5 rounded-full bg-primary-soft px-2.5 py-1 font-bold text-primary">
+          <span className="flex items-center gap-1.5 rounded-full bg-primary px-2.5 py-1 font-bold text-white">
             <Activity size={13} /> Pipeline 分析
           </span>
           <span className="flex items-center gap-1.5">
-            <Mic size={13} className="text-muted" />
+            <Mic size={13} className="text-primary" />
             最新：<b className="max-w-[220px] truncate text-ink">{latestCompany}</b>
           </span>
           <span className="flex items-center gap-1.5">
-            <FolderKanban size={13} className="text-muted" />
+            <FolderKanban size={13} className="text-primary" />
             進行中 {openDeals.length} 筆，{fmtNT(pipelineValue)}
           </span>
           <span className="flex items-center gap-1.5">
-            <Sparkles size={13} className="text-muted" />
+            <Sparkles size={13} className="text-primary" />
             已分析 {analyzedMeetings}/{meetings.length} 場
           </span>
           {riskDeals.length > 0 && (
-            <span className="flex items-center gap-1.5 text-warn">
+            <span className="flex items-center gap-1.5 font-bold text-primary">
               <CircleAlert size={13} />
               {riskDeals.length} 筆需處理
             </span>
