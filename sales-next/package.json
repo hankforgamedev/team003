@@ -1,0 +1,29 @@
+{
+  "name": "sales-next",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "@anthropic-ai/bedrock-sdk": "^0.10.0",
+    "@aws-sdk/client-bedrock-runtime": "^3.700.0",
+    "@sales-next/knowledge-base": "file:..",
+    "lucide-react": "^0.539.0",
+    "next": "^15.5.23",
+    "react": "19.1.1",
+    "react-dom": "19.1.1",
+    "zustand": "^5.0.7"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.1.11",
+    "@types/node": "^22",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "tailwindcss": "^4.1.11",
+    "typescript": "^5"
+  }
+}
