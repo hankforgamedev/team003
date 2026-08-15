@@ -4,17 +4,30 @@
   "description": "獨立的企業知識庫模組：資料夾與標籤兩套獨立分類、AI 自動分類、附出處的問答檢索。可獨立使用，也可 import 進 Sales Next。",
   "license": "MIT",
   "type": "module",
-  "main": "./src/index.ts",
-  "types": "./src/index.ts",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "exports": {
-    ".": "./src/index.ts",
-    "./react": "./src/react/index.ts",
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./react": {
+      "types": "./dist/react/index.d.ts",
+      "default": "./dist/react/index.js"
+    },
+    "./providers/bedrock": {
+      "types": "./dist/providers/bedrock.d.ts",
+      "default": "./dist/providers/bedrock.js"
+    },
     "./styles.css": "./src/react/styles.css"
   },
   "files": [
-    "src"
+    "dist",
+    "src/react/styles.css"
   ],
   "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "prepare": "npm run build",
     "typecheck": "tsc --noEmit",
     "test": "tsx scripts/smoke.ts"
   },
