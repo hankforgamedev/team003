@@ -1,0 +1,47 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: team003 LINE webhook ingestion only
+
+Parameters:
+  PipelineBucket:
+    Type: String
+    Default: taoyuan-hsinchu2
+  LineChannelSecretArn:
+    Type: String
+    Description: Existing Secrets Manager secret ARN containing channelSecret
+
+Resources:
+  LineWebhookIngest:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: line-webhook-ingest
+      Runtime: nodejs22.x
+      Handler: dist/integrations/aws-line-lambda.handler
+      CodeUri: ../
+      MemorySize: 128
+      Timeout: 10
+      Environment:
+        Variables:
+          PIPELINE_BUCKET: !Ref PipelineBucket
+          PIPELINE_PREFIX: async-pipeline/raw
+          LINE_CHANNEL_SECRET_ID: !Ref LineChannelSecretArn
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action: s3:PutObject
+              Resource: !Sub 'arn:${AWS::Partition}:s3:::${PipelineBucket}/async-pipeline/raw/*'
+            - Effect: Allow
+              Action: secretsmanager:GetSecretValue
+              Resource: !Ref LineChannelSecretArn
+      Events:
+        Webhook:
+          Type: HttpApi
+          Properties:
+            Path: /webhooks/line
+            Method: POST
+            PayloadFormatVersion: '2.0'
+
+Outputs:
+  LineWebhookUrl:
+    Description: Paste this URL into LINE Developers Console
+    Value: !Sub 'https://${ServerlessHttpApi}.execute-api.${AWS::Region}.${AWS::URLSuffix}/webhooks/line'

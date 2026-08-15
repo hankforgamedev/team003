@@ -19,6 +19,10 @@
       "types": "./dist/providers/bedrock.d.ts",
       "default": "./dist/providers/bedrock.js"
     },
+    "./integrations": {
+      "types": "./dist/integrations/index.d.ts",
+      "default": "./dist/integrations/index.js"
+    },
     "./styles.css": "./src/react/styles.css"
   },
   "files": [
@@ -29,7 +33,7 @@
     "build": "tsc -p tsconfig.build.json",
     "prepare": "npm run build",
     "typecheck": "tsc --noEmit",
-    "test": "tsx scripts/smoke.ts"
+    "test": "tsx scripts/smoke.ts && tsx scripts/integrations-smoke.ts"
   },
   "peerDependencies": {
     "@anthropic-ai/bedrock-sdk": ">=0.10",
@@ -54,6 +58,7 @@
   "devDependencies": {
     "@types/node": "^26.2.0",
     "@types/react": "^18.3.0",
+    "tsx": "^4.23.12",
     "typescript": "^5.5.0"
   },
   "keywords": [
