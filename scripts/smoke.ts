@@ -25,8 +25,11 @@ import {
   moveFolder,
   normalizePath,
   prepareMeetingDoc,
+  fuzzyMatch,
   prepareTextDoc,
+  quickSwitch,
   S3Store,
+  splitByRanges,
   searchDocs,
   seed,
   tokenize,
@@ -470,6 +473,78 @@ async function main() {
     ];
     const moved = moveFolder(docs, '/公司知識', '/封存');
     assert.deepEqual(moved.map((d) => d.id), ['a']);
+  });
+
+  console.log('\n快速切換（Cmd+P）');
+
+  await check('中文打幾個字就命中標題', () => {
+    const result = fuzzyMatch('報價', '報價與折扣授權 SOP');
+    assert.ok(result, '應該命中');
+    // 兩個字連在一起，應該是同一個區間。
+    assert.deepEqual(result.ranges, [{ start: 0, end: 2 }]);
+  });
+
+  await check('不連續的字也算命中', () => {
+    // 「報授」在標題裡是分開的，但順序對，仍算子序列命中。
+    const result = fuzzyMatch('報授', '報價與折扣授權 SOP');
+    assert.ok(result);
+    assert.equal(result.ranges.length, 2);
+  });
+
+  await check('順序不對就不算命中', () => {
+    // 寧可少給也不要給錯的：「授報」在標題裡順序是反的。
+    assert.equal(fuzzyMatch('授報', '報價與折扣授權 SOP'), null);
+    assert.equal(fuzzyMatch('完全沒有', '報價與折扣授權 SOP'), null);
+  });
+
+  await check('連續命中的排在分散命中前面', () => {
+    const tight = fuzzyMatch('報價', '報價 SOP');
+    const loose = fuzzyMatch('報價', '報表與價格說明');
+    assert.ok(tight && loose);
+    assert.ok(tight.score > loose.score, '連在一起的應該分數更高');
+  });
+
+  await check('英文大小寫不影響命中', () => {
+    assert.ok(fuzzyMatch('sop', '報價與折扣授權 SOP'));
+    assert.ok(fuzzyMatch('SOP', '報價與折扣授權 sop'));
+  });
+
+  await check('空查詢時給最近更新的幾筆', async () => {
+    const store = new MemoryStore();
+    await seed(store);
+    const docs = await store.listDocs();
+
+    const results = quickSwitch(docs, '', 3);
+    assert.equal(results.length, 3, '一打開就要有東西可選');
+  });
+
+  await check('標題命中排在路徑命中前面', () => {
+    const docs = [
+      makeDoc({ id: 'byPath', title: '無關的標題', path: '/公司知識/SOP' }),
+      makeDoc({ id: 'byTitle', title: 'SOP 總覽', path: '/其他' }),
+    ];
+    const results = quickSwitch(docs, 'SOP');
+    assert.equal(results[0]?.doc.id, 'byTitle');
+    assert.equal(results[0]?.matchedOn, 'title');
+    assert.equal(results[1]?.matchedOn, 'path');
+  });
+
+  await check('未歸檔的文件不會因為沒路徑而爆掉', () => {
+    const docs = [makeDoc({ id: 'x', title: '備忘', path: null })];
+    // path 是 null，比對路徑那段要安全跳過。
+    assert.deepEqual(quickSwitch(docs, 'zzz'), []);
+    assert.equal(quickSwitch(docs, '備忘')[0]?.doc.id, 'x');
+  });
+
+  await check('反白區間切得回原字串', () => {
+    const result = fuzzyMatch('報授', '報價與折扣授權 SOP');
+    assert.ok(result);
+    const parts = splitByRanges('報價與折扣授權 SOP', result.ranges);
+    assert.equal(parts.map((p) => p.text).join(''), '報價與折扣授權 SOP');
+    assert.deepEqual(
+      parts.filter((p) => p.hit).map((p) => p.text),
+      ['報', '授'],
+    );
   });
 
   console.log('\n檢索與問答');

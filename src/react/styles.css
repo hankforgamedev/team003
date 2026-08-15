@@ -945,3 +945,137 @@
   color: var(--kb-danger);
   font-size: 0.82rem;
 }
+
+/* ── 命令面板（Obsidian 的 Cmd+P） ─────────────────────────── */
+
+.kb-palette-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  justify-content: center;
+  /* 靠上而不是置中：面板長高時輸入框不會跳動。 */
+  align-items: flex-start;
+  padding: 12vh 16px 16px;
+  background: rgb(0 0 0 / 0.35);
+}
+
+.kb-palette {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 560px;
+  overflow: hidden;
+  border: 1px solid var(--kb-border);
+  border-radius: 10px;
+  background: var(--kb-bg);
+  box-shadow: 0 16px 48px rgb(0 0 0 / 0.28);
+}
+
+.kb-palette-input {
+  padding: 14px 16px;
+  border: none;
+  border-bottom: 1px solid var(--kb-border);
+  background: none;
+  color: var(--kb-text);
+  font: inherit;
+  font-size: 1rem;
+}
+
+.kb-palette-input:focus {
+  outline: none;
+}
+
+.kb-palette-list {
+  max-height: 46vh;
+  margin: 0;
+  padding: 6px;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.kb-palette-item {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 10px;
+  border: none;
+  border-radius: 6px;
+  background: none;
+  color: var(--kb-text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.kb-palette-item.is-active {
+  background: var(--kb-accent-soft);
+  color: var(--kb-accent);
+}
+
+.kb-palette-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.kb-palette-hit {
+  background: none;
+  color: var(--kb-accent);
+  font-weight: 700;
+}
+
+.kb-palette-item.is-active .kb-palette-hit {
+  text-decoration: underline;
+}
+
+.kb-palette-path {
+  flex-shrink: 0;
+  max-width: 45%;
+  overflow: hidden;
+  color: var(--kb-text-dim);
+  font-size: 0.75rem;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.kb-palette-via {
+  margin-left: 4px;
+  opacity: 0.7;
+}
+
+.kb-palette-empty {
+  margin: 0;
+  padding: 18px 16px;
+  color: var(--kb-text-dim);
+  font-size: 0.85rem;
+  text-align: center;
+}
+
+.kb-palette-footer {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-top: 1px solid var(--kb-border);
+  background: var(--kb-surface);
+  color: var(--kb-text-dim);
+  font-size: 0.72rem;
+}
+
+.kb-palette-footer kbd,
+.kb-kbd {
+  padding: 1px 5px;
+  border: 1px solid var(--kb-border);
+  border-radius: 4px;
+  background: var(--kb-bg);
+  font-family: inherit;
+  font-size: 0.72rem;
+}
+
+.kb-palette-footer kbd:not(:first-child) {
+  margin-left: 8px;
+}

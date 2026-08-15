@@ -1,8 +1,10 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { AskOptions } from '../core/qa.js';
 import type { KnowledgeStore } from '../core/store.js';
 import type { Citation, TaxonomyMode } from '../core/types.js';
 import { AskPanel } from './AskPanel.js';
+import { CommandPalette, usePaletteHotkey } from './CommandPalette.js';
+import type { PaletteCommand } from './CommandPalette.js';
 import { DocDetail } from './DocDetail.js';
 import { DocList } from './DocList.js';
 import { FolderTree } from './FolderTree.js';
@@ -51,6 +53,7 @@ export function KnowledgeBase({
   });
 
   const [tab, setTab] = useState<Tab>('browse');
+  const [paletteOpen, setPaletteOpen] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [highlight, setHighlight] = useState<{
     start: number;
@@ -80,6 +83,57 @@ export function KnowledgeBase({
     setSelectedId(citation.docId);
     setHighlight({ start: citation.start, end: citation.end });
   }, []);
+
+  const openPalette = useCallback(() => setPaletteOpen(true), []);
+  usePaletteHotkey(openPalette);
+
+  /** 從命令面板跳到某份知識：一定要切回瀏覽頁，不然使用者看不到結果。 */
+  const jumpToDoc = useCallback((id: string) => {
+    setTab('browse');
+    setSelectedId(id);
+    setHighlight(null);
+  }, []);
+
+  const paletteCommands: PaletteCommand[] = useMemo(() => {
+    const items: PaletteCommand[] = [
+      { id: 'browse', label: '前往：瀏覽', run: () => setTab('browse') },
+      { id: 'ask', label: '前往：問答', run: () => setTab('ask') },
+      { id: 'import', label: '前往：匯入', run: () => setTab('import') },
+    ];
+
+    // 只啟用一套分類系統時，切換視角的命令沒有意義，不要出現。
+    if (kb.kinds.length > 1) {
+      items.push(
+        {
+          id: 'view-folder',
+          label: '切換視角：資料夾',
+          hint: `${kb.folderCoverage.classified}/${kb.folderCoverage.total} 已歸檔`,
+          run: () => {
+            setTab('browse');
+            kb.setView('folder');
+          },
+        },
+        {
+          id: 'view-tag',
+          label: '切換視角：標籤',
+          hint: `${kb.tagCoverage.classified}/${kb.tagCoverage.total} 已標記`,
+          run: () => {
+            setTab('browse');
+            kb.setView('tag');
+          },
+        },
+      );
+    }
+
+    items.push({
+      id: 'reset',
+      label: '重設示範資料',
+      hint: '清空後重新灌入',
+      run: () => void kb.reset(),
+    });
+
+    return items;
+  }, [kb]);
 
   if (kb.loading) {
     return <div className="kb-root kb-loading">載入知識庫…</div>;
@@ -112,6 +166,14 @@ export function KnowledgeBase({
 
         <div className="kb-header-actions">
           <span className="kb-doc-total">{kb.docs.length} 筆知識</span>
+          {/* 把快捷鍵秀出來，不然沒人會知道有這個功能。 */}
+          <button
+            type="button"
+            className="kb-btn kb-btn-ghost kb-btn-sm"
+            onClick={openPalette}
+          >
+            快速切換 <kbd className="kb-kbd">⌘K</kbd>
+          </button>
           <button
             type="button"
             className="kb-btn kb-btn-ghost kb-btn-sm"
@@ -121,6 +183,15 @@ export function KnowledgeBase({
           </button>
         </div>
       </header>
+
+      {paletteOpen && (
+        <CommandPalette
+          docs={kb.docs}
+          commands={paletteCommands}
+          onSelectDoc={jumpToDoc}
+          onClose={() => setPaletteOpen(false)}
+        />
+      )}
 
       {tab === 'ask' && (
         <AskPanel onAsk={kb.askQuestion} onOpenCitation={openCitation} />

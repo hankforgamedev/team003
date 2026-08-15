@@ -28,6 +28,13 @@ export type {
 } from './core/meeting.js';
 export { formatBudget, looksLikeMeetingJson } from './core/meeting.js';
 
+export type { MatchRange, QuickMatch } from './core/quick-switch.js';
+export {
+  fuzzyMatch,
+  quickSwitch,
+  splitByRanges,
+} from './core/quick-switch.js';
+
 export type { KnowledgeStore, Snapshot } from './core/store.js';
 export {
   BaseStore,
