@@ -56,9 +56,9 @@ export function StatTile({
 }
 
 const STAGE_STYLE: Record<Stage, string> = {
-  lead: "bg-[#eef1f8] text-[#5a6b8c]",
-  meeting: "bg-primary-soft text-primary",
-  proposal: "bg-[#efeafe] text-[#6d4de0]",
+  lead: "bg-bg text-muted",
+  meeting: "bg-[#e8e8e8] text-ink-2",
+  proposal: "bg-primary-soft text-primary",
   negotiation: "bg-warn-soft text-warn",
   won: "bg-good-soft text-good",
   lost: "bg-bad-soft text-bad",
@@ -72,14 +72,22 @@ export function StageBadge({ stage }: { stage: Stage }) {
   );
 }
 
-export function Chip({ children, tone = "neutral" }: { children: ReactNode; tone?: "neutral" | "blue" | "purple" | "warn" }) {
+export function Chip({
+  children,
+  tone = "neutral",
+  className = "",
+}: {
+  children: ReactNode;
+  tone?: "neutral" | "blue" | "purple" | "warn";
+  className?: string;
+}) {
   const cls = {
-    neutral: "bg-[#eef1f8] text-ink-2",
+    neutral: "bg-bg text-ink-2",
     blue: "bg-primary-soft text-primary",
-    purple: "bg-[#efeafe] text-[#6d4de0]",
+    purple: "bg-primary-soft text-primary",
     warn: "bg-warn-soft text-warn",
   }[tone];
-  return <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${cls}`}>{children}</span>;
+  return <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${cls} ${className}`}>{children}</span>;
 }
 
 export function EmptyState({ title, hint, action }: { title: string; hint?: string; action?: ReactNode }) {

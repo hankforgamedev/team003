@@ -64,7 +64,7 @@ export function DocList({ docs, selectedId, onSelect, query }: DocListProps) {
               <div className="kb-doc-item-top">
                 {doc.pinned && (
                   <span className="kb-pin" aria-label="已釘選">
-                    📌
+                    ●
                   </span>
                 )}
                 <span className="kb-doc-title">{doc.title}</span>

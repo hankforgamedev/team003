@@ -135,7 +135,7 @@ export function DocDetail({
         {/* ── 分類系統一：資料夾 ────────────────────────────── */}
         <section className="kb-taxonomy-block">
           <div className="kb-taxonomy-head">
-            <span className="kb-taxonomy-title">📁 資料夾</span>
+            <span className="kb-taxonomy-title"><span aria-hidden="true">□</span> 資料夾</span>
             {doc.path === null && (
               <span className="kb-badge kb-badge-unclassified">未歸檔</span>
             )}
@@ -175,7 +175,7 @@ export function DocDetail({
         {/* ── 分類系統二：標籤（與上面完全獨立） ──────────────── */}
         <section className="kb-taxonomy-block">
           <div className="kb-taxonomy-head">
-            <span className="kb-taxonomy-title">🏷️ 標籤</span>
+            <span className="kb-taxonomy-title"><span aria-hidden="true">#</span> 標籤</span>
             {doc.tags.length === 0 && (
               <span className="kb-badge kb-badge-unclassified">未標記</span>
             )}

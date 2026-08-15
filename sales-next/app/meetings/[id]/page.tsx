@@ -113,7 +113,7 @@ export default function MeetingDetail({ params }: { params: Promise<{ id: string
           </Card>
 
           {m.nba && (
-            <Card className="border-primary/25 bg-gradient-to-b from-[#f7f9ff] to-white">
+            <Card className="border-primary/25 bg-primary-soft/35">
               <SectionTitle>
                 <span className="flex items-center gap-1.5">
                   <Sparkles size={15} className="text-primary" /> Next Best Action

@@ -1,30 +1,30 @@
 @import "tailwindcss";
 
-/* Sales Next 設計 tokens — 淺色專業 SaaS＋深藍側欄（對齊產品 mockup） */
+/* newUI — 黑灰編輯感，唯一品牌色為普魯士藍 #003153 */
 @theme {
-  --color-bg: #f4f6fb;
+  --color-bg: #f4f4f4;
   --color-surface: #ffffff;
-  --color-ink: #0f1b33;
-  --color-ink-2: #44536f;
-  --color-muted: #7484a2;
-  --color-line: #e4e9f4;
-  --color-primary: #2456e6;
-  --color-primary-deep: #16308f;
-  --color-primary-soft: #eaf0fe;
-  --color-good: #0e9f6e;
-  --color-good-soft: #e6f6f0;
-  --color-warn: #b45309;
-  --color-warn-soft: #fdf3e4;
-  --color-bad: #e02d3c;
-  --color-bad-soft: #fdecee;
-  --color-navy-1: #1b2b4d;
-  --color-navy-2: #152039;
-  --color-series-2: #e8700a;
+  --color-ink: #111111;
+  --color-ink-2: #3f3f3f;
+  --color-muted: #707070;
+  --color-line: #d2d2d2;
+  --color-primary: #003153;
+  --color-primary-deep: #003153;
+  --color-primary-soft: #e3ebef;
+  --color-good: #246b50;
+  --color-good-soft: #e3eee9;
+  --color-warn: #7a5715;
+  --color-warn-soft: #f0e8d7;
+  --color-bad: #a52d2d;
+  --color-bad-soft: #f2e2e2;
+  --color-navy-1: #111111;
+  --color-navy-2: #171717;
+  --color-series-2: #727272;
 
   --font-sans: var(--font-noto), var(--font-dm), sans-serif;
 
-  --shadow-card: 0 1px 2px rgba(15, 27, 51, 0.04), 0 8px 24px -12px rgba(15, 27, 51, 0.12);
-  --shadow-pop: 0 12px 32px -8px rgba(15, 27, 51, 0.18);
+  --shadow-card: 0 0 0 rgba(0, 0, 0, 0);
+  --shadow-pop: 0 18px 44px -22px rgba(0, 0, 0, 0.42);
 }
 
 html {
@@ -37,11 +37,28 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+button,
+a,
+input,
+select,
+textarea {
+  -webkit-tap-highlight-color: transparent;
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 3px solid var(--color-primary);
+  outline-offset: 3px;
+}
+
 /* 卡片 */
 .card {
   background: var(--color-surface);
   border: 1px solid var(--color-line);
-  border-radius: 16px;
+  border-radius: 14px;
   box-shadow: var(--shadow-card);
 }
 
@@ -81,19 +98,31 @@ body {
   align-items: center;
   gap: 0.65rem;
   padding: 0.6rem 0.85rem;
-  border-radius: 10px;
+  border-radius: 9px;
   color: rgba(255, 255, 255, 0.72);
   font-size: 0.9rem;
   transition: background 0.15s ease, color 0.15s ease;
 }
 .nav-item:hover { background: rgba(255, 255, 255, 0.08); color: #fff; }
 .nav-item.active {
-  background: linear-gradient(135deg, #2456e6, #4a63ef);
+  background: var(--color-primary);
   color: #fff;
-  box-shadow: 0 6px 16px -6px rgba(36, 86, 230, 0.55);
+  box-shadow: none;
 }
 
 /* 捲軸 */
 .scroll-slim::-webkit-scrollbar { width: 6px; height: 6px; }
-.scroll-slim::-webkit-scrollbar-thumb { background: #cdd6e8; border-radius: 999px; }
+.scroll-slim::-webkit-scrollbar-thumb { background: #999999; border-radius: 999px; }
 .scroll-slim::-webkit-scrollbar-track { background: transparent; }
+
+/* 會議卡：讓品牌藍在列表掃視時真正形成視覺錨點。 */
+.meeting-chip-strong {
+  background: var(--color-primary);
+  color: #fff;
+}
+
+.meeting-chip-soft {
+  background: color-mix(in srgb, var(--color-primary) 18%, var(--color-surface));
+  color: var(--color-primary);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-primary) 28%, transparent);
+}

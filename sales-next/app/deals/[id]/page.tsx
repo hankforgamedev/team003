@@ -92,7 +92,7 @@ export default function DealDetail({ params }: { params: Promise<{ id: string }>
         </div>
 
         <div className="flex flex-col gap-4">
-          <Card className="border-primary/20 bg-gradient-to-br from-white via-white to-primary-soft/40">
+          <Card className="border-primary/20 bg-primary-soft/30">
             <SectionTitle><span className="flex items-center gap-1.5"><Sparkles size={15} className="text-primary" /> 現在最重要的一步</span></SectionTitle>
             <div className="rounded-xl border border-primary/15 bg-white p-4">
               <div className="text-base font-black">{latestNba?.actions[0]?.title ?? dealNextStep(d)}</div>
@@ -113,7 +113,7 @@ export default function DealDetail({ params }: { params: Promise<{ id: string }>
         </div>
 
         <div className="flex flex-col gap-4">
-          <Card className="border-primary/25 bg-gradient-to-br from-white via-white to-primary-soft/40">
+          <Card className="border-primary/25 bg-primary-soft/30">
             <SectionTitle><span className="flex items-center gap-1.5"><Sparkles size={15} className="text-primary" /> AI 洞察</span></SectionTitle>
             <div className="flex flex-wrap gap-1.5">
               {d.urgencyLevel && <Chip tone={d.urgencyLevel === "高" ? "warn" : "neutral"}>急迫度：{d.urgencyLevel}</Chip>}

@@ -129,7 +129,7 @@ export function ImportPanel({ onImport, onDone }: ImportPanelProps) {
           <div className="kb-import-systems">
             <div className="kb-import-system">
               <div className="kb-import-system-head">
-                <span>📁 資料夾</span>
+                <span><span aria-hidden="true">□</span> 資料夾</span>
                 {result.doc.path ? (
                   <span className="kb-confidence">
                     把握度 {Math.round(result.classification.folder.confidence * 100)}%
@@ -152,7 +152,7 @@ export function ImportPanel({ onImport, onDone }: ImportPanelProps) {
 
             <div className="kb-import-system">
               <div className="kb-import-system-head">
-                <span>🏷️ 標籤</span>
+                <span><span aria-hidden="true">#</span> 標籤</span>
                 {result.doc.tags.length > 0 ? (
                   <span className="kb-confidence">
                     把握度 {Math.round(result.classification.tag.confidence * 100)}%

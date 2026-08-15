@@ -25,7 +25,7 @@ export default function AnalyticsPage() {
 
       {/* 黃金客群 hero */}
       {golden && (
-        <div className="rise overflow-hidden rounded-2xl bg-gradient-to-r from-navy-1 to-[#23408f] p-6 text-white shadow-pop">
+        <div className="rise overflow-hidden rounded-2xl bg-primary p-6 text-white shadow-pop">
           <div className="flex items-center gap-2 text-xs font-semibold text-amber-300">
             <Star size={14} fill="currentColor" /> 黃金客群
           </div>
@@ -108,7 +108,7 @@ export default function AnalyticsPage() {
                 label={`${s.customerType}・${s.plan}`}
                 value={Math.round(s.avgCycleDays ?? 0)}
                 max={maxCycle}
-                color={s.customerType === "品牌方" ? "#2456e6" : "#e8700a"}
+                color={s.customerType === "品牌方" ? "#003153" : "#727272"}
                 fmt={(v) => `${v} 天`}
               />
             ))}
@@ -126,8 +126,8 @@ export default function AnalyticsPage() {
         <Card className="rise rise-3">
           <SectionTitle>決策者參與 × 成交率</SectionTitle>
           <div className="space-y-3">
-            <HBar label="決策者曾參與會議" value={Math.round(dm.withDm * 100)} max={100} color="#0e9f6e" fmt={(v) => `${v}%`} />
-            <HBar label="決策者未參與" value={Math.round(dm.withoutDm * 100)} max={100} color="#a9b6cf" fmt={(v) => `${v}%`} />
+            <HBar label="決策者曾參與會議" value={Math.round(dm.withDm * 100)} max={100} color="#246b50" fmt={(v) => `${v}%`} />
+            <HBar label="決策者未參與" value={Math.round(dm.withoutDm * 100)} max={100} color="#999999" fmt={(v) => `${v}%`} />
           </div>
           <p className="mt-4 rounded-lg bg-bg px-3 py-2.5 text-xs leading-relaxed text-ink-2">
             這就是 AI 建議「邀請決策者參與下次會議」的資料依據——Next Best Action

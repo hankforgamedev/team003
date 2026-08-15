@@ -46,7 +46,7 @@ export default function MeetingsPage() {
                       ｜{m.durationMin} 分鐘｜{m.attendees.length} 位與會者
                     </div>
                   </div>
-                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary-soft text-primary">
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary text-white">
                     <Mic size={16} />
                   </span>
                 </div>
@@ -58,8 +58,8 @@ export default function MeetingsPage() {
                   ))}
                 </ul>
                 <div className="mt-3 flex flex-wrap gap-1.5">
-                  {m.extraction?.customerType && <Chip tone="blue">{m.extraction.customerType}</Chip>}
-                  {m.extraction?.plan && <Chip tone="purple">{m.extraction.plan}</Chip>}
+                  {m.extraction?.customerType && <Chip tone="blue" className="meeting-chip-strong">{m.extraction.customerType}</Chip>}
+                  {m.extraction?.plan && <Chip tone="purple" className="meeting-chip-soft">{m.extraction.plan}</Chip>}
                   {m.extraction?.contactDepartment && <Chip>{m.extraction.contactDepartment}</Chip>}
                   {m.nba && <Chip tone="warn">{m.nba.actions.length} 項建議行動</Chip>}
                 </div>
