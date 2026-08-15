@@ -11,6 +11,7 @@ import { bottleneck, fmtNT, fmtPct, funnel, kpis, monthlyTrend, segmentStats } f
 import { Card, SectionTitle, StageBadge, StatTile, Chip } from "@/components/ui";
 import { FunnelChart, TrendChart } from "@/components/charts";
 import { STAGE_LABEL } from "@/lib/types";
+import { LineDashboardCard } from "@/components/LineDashboardCard";
 
 function delta(cur: number, prev: number): number | null {
   if (!prev) return null;
@@ -85,6 +86,8 @@ export default function Dashboard() {
           hint="越短越好"
         />
       </div>
+
+      <LineDashboardCard />
 
       {view === "manager" ? (
         <>

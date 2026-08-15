@@ -14,16 +14,19 @@ import {
   Sparkles,
   UserRound,
   Briefcase,
+  MessageCircleMore,
 } from "lucide-react";
 import { useSales } from "@/lib/store";
 import { checkAiLive } from "@/lib/ai/client";
 import { aiProviderLabel } from "@/lib/ai/provider-config";
 import { WorkspaceAnalysisStrip } from "@/components/PipelineAnalysis";
+import { LineIntegrationBridge } from "@/components/LineIntegrationBridge";
 
 const NAV = [
   { href: "/", label: "總覽", icon: LayoutDashboard },
   { href: "/meetings", label: "會議紀錄", icon: Mic },
   { href: "/deals", label: "案件管理", icon: FolderKanban },
+  { href: "/integrations/line", label: "LINE 客戶", icon: MessageCircleMore },
   { href: "/knowledge", label: "知識庫", icon: BookOpenText },
   { href: "/funnel", label: "銷售漏斗", icon: Filter },
   { href: "/analytics", label: "分析報表", icon: BarChart3 },
@@ -152,6 +155,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         </header>
 
         {hydrated && <WorkspaceAnalysisStrip />}
+        <LineIntegrationBridge />
 
         <main className="mx-auto w-full max-w-[1180px] flex-1 px-4 pb-24 pt-6 md:px-8 md:pb-10">
           {hydrated ? children : <div className="py-24 text-center text-muted">載入工作區…</div>}

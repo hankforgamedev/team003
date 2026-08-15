@@ -22,6 +22,7 @@
 |---|---|
 | 🎙️ 會議輸入 | 即時錄音 / 上傳音檔 / 貼上逐字稿 / 載入示範會議；錄音前內建個資法告知流程 |
 | 🤖 自動建 CRM | Whisper 轉寫 → Bedrock/OpenAI 抽取 CRM 欄位（公司、窗口、預算、階段、異議、決策者、下一步…） |
+| 💬 LINE 客戶匣 | 從 `taoyuan-hsinchu2/customers/` 讀取真實對話與 CRM，支援待辨識客戶歸檔，並同步案件、會議與知識庫 |
 | ✨ Next Best Action | 顧問方法論規則引擎 × 企業自家歷史數據 × LLM 潤飾，每條建議附「為什麼」 |
 | 📖 Sales Knowledge Base | 跨會議問答，答案附出處引文，可跳回原始會議 |
 | 🔻 銷售漏斗 | 五階段轉換率、瓶頸自動判定、依客群/方案分組比較 |
@@ -35,6 +36,9 @@ Meeting Audio → Whisper STT → Bedrock/OpenAI 結構化抽取 → CRM Databas
                                                     ├→ Knowledge Base (RAG)
                                                     ├→ Sales Analytics
                                                     └→ 規則引擎 × 歷史數據 → Next Best Action
+
+LINE Webhook → S3 Async Pipeline → customers/<公司>/line/{raw,transcripts,crm}
+                                      └→ Sales Next server API → Deal / Meeting / Knowledge Base
 ```
 
 - **Next.js 15**（App Router）＋ TypeScript ＋ Tailwind v4
@@ -68,10 +72,21 @@ BEDROCK_MODEL=anthropic.claude-opus-5
 # Settings 切到 OpenAI GPT 時使用；Whisper 語音轉寫也使用這把 key
 OPENAI_API_KEY=your-key-here
 OPENAI_MODEL=gpt-4o-mini
+
+# LINE 客戶匣（全部為 server-only，不可加 NEXT_PUBLIC_）
+SALES_NEXT_INTEGRATION_TOKEN=your-long-internal-access-code
+SALES_NEXT_S3_BUCKET=taoyuan-hsinchu2
+SALES_NEXT_AWS_REGION=us-east-1
+SALES_NEXT_LINE_ACCOUNT_NAME=Sales Next 測試
 ```
 
 文字分析預設走 AWS Bedrock；到「設定 → AI 引擎」可切成 OpenAI GPT 測試 pipeline。
 語音轉寫仍使用 OpenAI Whisper；如果只要測 CRM/NBA/知識庫流程，可以直接貼逐字稿。
+
+LINE 客戶匣與 Bedrock 可共用同一組 server-side AWS 憑證。該 IAM 身分需能列出與讀取
+`customers/`；若要在網頁執行待辨識客戶歸檔，還需允許複製／刪除該前綴物件，以及讀寫
+`async-pipeline/config/customer-map.json`。瀏覽器只收到已去識別化的客戶資料，不會取得
+LINE userId、S3 key 或 AWS 憑證。
 
 ## Demo 驗證路徑
 

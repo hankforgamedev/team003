@@ -189,7 +189,7 @@ export interface Meeting {
   summary: string[];
   extraction?: MeetingExtraction;
   nba?: NBAResult;
-  source: "demo" | "recorded" | "uploaded" | "pasted";
+  source: "demo" | "recorded" | "uploaded" | "pasted" | "line";
   consent?: boolean; // 錄音同意（C 組：產品內建同意機制)
   pipeline?: PipelineStepSnapshot[];
 }
