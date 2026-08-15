@@ -8,6 +8,12 @@
 
 > 一般會議 AI 告訴你「剛剛說了什麼」；Sales Next 告訴業務「**接下來該做什麼**」——而且每條建議都附得出資料依據。
 
+給下一位 coding agent：
+
+- 先讀 [`CLAUDE.md`](./CLAUDE.md)
+- 技術細節看 [`docs/TECHNICAL.md`](./docs/TECHNICAL.md)
+- 重建/比賽日流程看 [`REBUILD-PLAYBOOK.md`](./REBUILD-PLAYBOOK.md)
+
 ---
 
 ## 核心功能
@@ -33,18 +39,22 @@ Meeting Audio → Whisper STT → Bedrock/OpenAI 結構化抽取 → CRM Databas
 
 - **Next.js 15**（App Router）＋ TypeScript ＋ Tailwind v4
 - **zustand + localStorage**：每個瀏覽器一個獨立工作區，無需登入即可完整體驗
+- **AI provider 可切換**：文字分析預設 AWS Bedrock，設定頁可切 OpenAI GPT；語音轉寫使用 OpenAI Whisper
 - **雙引擎設計**：所有 AI 功能都有離線備援（規則式抽取、檢索式問答、本地規則引擎），API 失效或斷網時自動降級，功能不中斷
-- **數據自洽**：520 筆確定性生成的示範案件，所有統計即時推導，無寫死數字
+- **數據自洽**：預設 30 筆跨部門整合測試資料，所有統計即時推導，無寫死數字
 - 手刻 SVG 圖表，零圖表相依
+
+目前 GitHub repo 是兩層結構：repo root 是 `@sales-next/knowledge-base` package，Next.js app 在 `sales-next/` 子資料夾，並用 `file:..` 引用 root package。
 
 ## 本機執行
 
 ```bash
+cd sales-next
 npm install
-npm run dev
+npm run dev -- --port 3001
 ```
 
-開 http://localhost:3000 即可（無需 API key，會以內建示範引擎運作）。
+開 http://localhost:3001 即可（無需 API key，會以內建示範引擎運作）。
 
 要啟用真 AI，建立 `.env.local`：
 
@@ -63,14 +73,24 @@ OPENAI_MODEL=gpt-4o-mini
 文字分析預設走 AWS Bedrock；到「設定 → AI 引擎」可切成 OpenAI GPT 測試 pipeline。
 語音轉寫仍使用 OpenAI Whisper；如果只要測 CRM/NBA/知識庫流程，可以直接貼逐字稿。
 
+## Demo 驗證路徑
+
+改到資料、AI、store、layout、meeting、knowledge 或 analytics 時，請至少實測：
+
+首頁 → 主管視角 → `/meetings/new` → 載入示範會議 → 跑到「已存檔」→ 知識庫 → 分析報表
+
 ## 專案結構
 
 ```
-app/            頁面（總覽/會議/案件/知識庫/漏斗/分析/設定）＋ API routes
-lib/types.ts    資料模型（Deal / Meeting / MeetingExtraction / NBA）
-lib/ai/         Bedrock/OpenAI 分流、OpenAI 轉寫、離線備援引擎、NBA 規則引擎
-lib/data/       示範資料生成器、重點案件、分析函式
-CLAUDE.md       給 AI coding 工具的專案守則
+app/              頁面（總覽/會議/案件/知識庫/漏斗/分析/設定）＋ API routes
+components/       shell、共用 UI、手刻 SVG 圖表、pipeline analysis strip
+lib/types.ts      資料模型（Deal / Meeting / MeetingExtraction / NBA / AiProvider）
+lib/pipeline.ts   桃園新竹 pipeline 順序、逐字稿/JSON normalize
+lib/ai/           Bedrock/OpenAI 分流、OpenAI 轉寫、離線備援引擎、NBA 規則引擎
+lib/kb/           Sales Next meeting 與 knowledge-base package 的 adapter/store/provider
+lib/data/         示範資料、重點案件、分析函式
+docs/             技術與 CRM/KB 設計文件
+CLAUDE.md         給下一個 AI coding agent 的接手指南
 ```
 
 ---

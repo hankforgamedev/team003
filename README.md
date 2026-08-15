@@ -1,3 +1,12 @@
+# Team003 / Sales Next Repo
+
+這個 repo 有兩層：
+
+- `sales-next/`：Next.js app，桃園新竹 pipeline、CRM、知識庫、分析、AI provider 設定都在這裡。下一個 coding agent 請先讀 [`sales-next/CLAUDE.md`](./sales-next/CLAUDE.md) 和 [`sales-next/docs/TECHNICAL.md`](./sales-next/docs/TECHNICAL.md)。
+- repo root：`@sales-next/knowledge-base` package，提供資料夾/標籤分類、RAG 檢索與 React 知識庫 UI。
+
+---
+
 # @sales-next/knowledge-base
 
 企業知識庫模組。**資料夾／標籤雙視角、AI 自動歸檔、附出處的問答檢索。**
