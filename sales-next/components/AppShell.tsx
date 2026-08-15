@@ -58,7 +58,19 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   }, [seedIfNeeded]);
 
   useEffect(() => {
-    checkAiLive(aiProvider).then(setAiLive);
+    let cancelled = false;
+    const requestedProvider = aiProvider;
+
+    setAiLive(null);
+    checkAiLive(requestedProvider).then((live) => {
+      if (!cancelled) {
+        setAiLive(live);
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
   }, [aiProvider, setAiLive]);
 
   const active = (href: string) =>
@@ -91,9 +103,11 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             />
             {aiLive === null ? "AI 檢查中…" : aiLive ? `${providerLabel} 已連線` : "Demo 模式"}
           </div>
-          {aiLive
-            ? `文字分析目前走 ${providerLabel}`
-            : `未偵測到 ${providerLabel} 設定，以內建示範引擎運作（完整功能可用）`}
+          {aiLive === null
+            ? `正在確認 ${providerLabel} 連線狀態`
+            : aiLive
+              ? `文字分析目前走 ${providerLabel}`
+              : `未偵測到 ${providerLabel} 設定，以內建示範引擎運作（完整功能可用）`}
         </div>
       </aside>
 

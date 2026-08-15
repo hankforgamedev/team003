@@ -2,12 +2,15 @@
 
 ## 檔案地圖
 ```
-lib/types.ts              資料模型（Deal / Meeting / MeetingExtraction / NBA）← 今天凍結，誰都不准改
+lib/types.ts              資料模型（Deal / Meeting / MeetingExtraction / NBA / AiProvider）
 lib/store.ts              zustand 全域狀態、示範資料 seed 與重設
+lib/pipeline.ts           桃園新竹 pipeline 順序、逐字稿/JSON normalize
 lib/data/generator.ts     確定性母體（520 筆案件，固定 seed）
 lib/data/showcase.ts      手工重點案件 ＋ ABC 品牌示範會議腳本
 lib/data/analytics.ts     所有分析函式（漏斗、轉換率、成交週期、黃金客群、決策者影響）
-lib/ai/openai.ts          OpenAI 呼叫層（server only）
+lib/ai/llm.ts             Bedrock/OpenAI server provider 分流
+lib/ai/provider-config.ts provider 選項與預設 Bedrock
+lib/ai/openai.ts          OpenAI GPT/Whisper helper（server only）
 lib/ai/client.ts          前端 AI 呼叫＋自動降級
 lib/ai/demo-engine.ts     離線備援：規則式抽取與檢索問答
 lib/ai/nba-rules.ts       顧問規則引擎（Next Best Action）
@@ -15,7 +18,7 @@ app/page.tsx              總覽（雙視角）
 app/meetings/new/page.tsx wow moment 流程（四種輸入＋四階段動畫）
 app/meetings/[id]/        會議詳情｜app/deals/  案件管理｜app/knowledge/  知識庫
 app/funnel/ app/analytics/ app/settings/
-app/api/{transcribe,extract,nba,chat,health}/route.ts
+app/api/{transcribe,extract,nba,kb-ask,health}/route.ts
 components/AppShell.tsx   側欄＋頂欄＋手機底部導覽｜components/ui.tsx｜components/charts.tsx
 ```
 
@@ -25,7 +28,7 @@ components/AppShell.tsx   側欄＋頂欄＋手機底部導覽｜components/ui.t
 ## 六人協作規則
 1. **只有整合者能碰 `main`**；其他人開自己的 branch
 2. **檔案邊界不重疊**：一條線動會議相關頁面，另一條線做新頁面，避免 merge 衝突
-3. `lib/types.ts` 是全隊共用的「合約」，**今天凍結不改**
+3. `lib/types.ts` 是全隊共用的「合約」，要改欄位時同步更新 extract schema、pipeline normalizer、頁面 mapping
 4. 衝突了找整合者，不要自己硬 merge
 5. 每 30 分鐘 commit + push 一次（留下開發軌跡）
 

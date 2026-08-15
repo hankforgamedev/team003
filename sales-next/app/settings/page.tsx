@@ -5,12 +5,21 @@ import { CheckCircle2, Cpu, Database, KeyRound, RefreshCw, ShieldCheck, Smartpho
 import { useSales } from "@/lib/store";
 import { AI_PROVIDER_OPTIONS, aiProviderLabel } from "@/lib/ai/provider-config";
 import { Card, SectionTitle } from "@/components/ui";
+import type { AiProvider } from "@/lib/types";
 
 export default function SettingsPage() {
   const { aiProvider, setAiProvider, aiLive, resetDemo, deals, meetings } = useSales();
   const providerLabel = aiProviderLabel(aiProvider);
   const [resetting, setResetting] = useState(false);
   const [resetDone, setResetDone] = useState(false);
+
+  function chooseAiProvider(provider: AiProvider) {
+    if (typeof setAiProvider === "function") {
+      setAiProvider(provider);
+      return;
+    }
+    useSales.setState({ aiProvider: provider, aiLive: null });
+  }
 
   async function runReset() {
     setResetting(true);
@@ -40,7 +49,7 @@ export default function SettingsPage() {
               <button
                 key={option.value}
                 type="button"
-                onClick={() => setAiProvider(option.value)}
+                onClick={() => chooseAiProvider(option.value)}
                 className={`rounded-xl border px-4 py-3 text-left transition ${
                   active
                     ? "border-primary bg-primary-soft text-primary"
