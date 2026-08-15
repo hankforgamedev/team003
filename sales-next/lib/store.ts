@@ -9,6 +9,7 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import { AiProvider, Deal, Meeting, ViewRole } from "@/lib/types";
+import { normalizeAiProvider } from "@/lib/ai/provider-config";
 import { buildIntegrationTestSeed } from "@/lib/data/integration-test";
 import { resetKbWithMeetings, syncMeetingToKb } from "@/lib/kb/store";
 
@@ -36,6 +37,22 @@ interface SalesState {
 
 function buildSeed() {
   return { ...buildIntegrationTestSeed(), seedVersion: DEFAULT_SEED_VERSION };
+}
+
+function sanitizePersistedState(persisted: unknown): Partial<SalesState> {
+  if (!persisted || typeof persisted !== "object") return {};
+
+  const raw = persisted as Record<string, unknown>;
+  const state: Partial<SalesState> = {};
+
+  if (typeof raw.seededAt === "string" || raw.seededAt === null) state.seededAt = raw.seededAt;
+  if (typeof raw.seedVersion === "string" || raw.seedVersion === null) state.seedVersion = raw.seedVersion;
+  if (Array.isArray(raw.deals)) state.deals = raw.deals as Deal[];
+  if (Array.isArray(raw.meetings)) state.meetings = raw.meetings as Meeting[];
+  if (raw.view === "rep" || raw.view === "manager") state.view = raw.view;
+  if (raw.aiProvider !== undefined) state.aiProvider = normalizeAiProvider(raw.aiProvider);
+
+  return state;
 }
 
 export const useSales = create<SalesState>()(
@@ -95,6 +112,12 @@ export const useSales = create<SalesState>()(
     {
       name: "sales-next-store-v1",
       storage: createJSONStorage(() => localStorage),
+      version: 2,
+      migrate: (persisted) => sanitizePersistedState(persisted),
+      merge: (persisted, current) => ({
+        ...current,
+        ...sanitizePersistedState(persisted),
+      }),
       partialize: (s) => ({
         seededAt: s.seededAt,
         seedVersion: s.seedVersion,
