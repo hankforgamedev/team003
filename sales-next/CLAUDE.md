@@ -115,6 +115,7 @@ OPENAI_MODEL=gpt-4o-mini
 - 要改 CRM 欄位：先改 `lib/types.ts`，再改 `app/api/extract/route.ts` schema、`lib/pipeline.ts` normalizer、`app/meetings/new/page.tsx` 顯示與 deal mapping。
 - 要改 provider：改 `lib/ai/provider-config.ts` 和 `lib/ai/llm.ts`，保持 fallback。
 - 要改知識庫：先看 repo root `src/core/*` 與 app 內 `lib/kb/*`，不要把 AWS key 帶到 client bundle。
+- 要開 LINE 常駐資料庫或潛在用戶資料庫：先讀 `PLAN.md`，照裡面的資料邊界與 store interface 開。
 
 ## 完成前檢查
 
