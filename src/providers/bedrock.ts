@@ -15,10 +15,12 @@ import type { Citation } from '../core/types.js';
  */
 
 /**
- * Bedrock 上的 Claude model id 帶 `anthropic.` 前綴，
- * 跟第一方 API 的 `claude-opus-5` 不同，寫錯會 400。
+ * 預設走 Bedrock Runtime 的 Sonnet 4.5 US 跨區 inference profile。
+ * 這條路徑比新 Mantle endpoint 的帳號覆蓋率高；要用 Sonnet 5／Opus 5
+ * 仍可直接覆寫 `model`，`endpoint: 'auto'` 會依 model id 選對 client。
  */
-export const BEDROCK_CLAUDE_MODEL = 'anthropic.claude-opus-5';
+export const BEDROCK_CLAUDE_MODEL =
+  'us.anthropic.claude-sonnet-4-5-20250929-v1:0';
 
 /** Amazon 自家的多語 embedding 模型，中文表現堪用。 */
 export const BEDROCK_EMBED_MODEL = 'amazon.titan-embed-text-v2:0';
@@ -26,8 +28,10 @@ export const BEDROCK_EMBED_MODEL = 'amazon.titan-embed-text-v2:0';
 export interface BedrockOptions {
   /** AWS region，例如 `us-east-1`。Bedrock 一定要指定。 */
   region: string;
-  /** 覆寫模型。預設 `anthropic.claude-opus-5`。 */
+  /** 覆寫模型。預設 US 跨區的 Claude Sonnet 4.5。 */
   model?: string;
+  /** `auto` 會依 model id 選 Runtime 或 Mantle；通常不必手動指定。 */
+  endpoint?: 'auto' | 'runtime' | 'mantle';
   /**
    * 思考深度。知識庫問答是「照著 context 講清楚」，不需要深度推理，
    * 用 `low` 可以明顯省 token 和延遲。
@@ -37,28 +41,58 @@ export interface BedrockOptions {
 }
 
 /** SDK 的最小介面。用結構型別避免對 SDK 版本產生硬相依。 */
-interface MantleClient {
+interface BedrockClient {
   messages: {
-    create(params: Record<string, unknown>): Promise<{
+    create(
+      params: Record<string, unknown>,
+      options?: { signal?: AbortSignal },
+    ): Promise<{
       stop_reason?: string | null;
       content: Array<{ type: string; text?: string }>;
     }>;
   };
 }
 
-let clientPromise: Promise<MantleClient> | null = null;
+type ResolvedEndpoint = Exclude<NonNullable<BedrockOptions['endpoint']>, 'auto'>;
 
-async function getClient(region: string): Promise<MantleClient> {
-  if (!clientPromise) {
-    clientPromise = (async () => {
+const clientPromises = new Map<string, Promise<BedrockClient>>();
+
+async function getClient(
+  region: string,
+  endpoint: ResolvedEndpoint,
+): Promise<BedrockClient> {
+  const cacheKey = `${endpoint}:${region}`;
+  let promise = clientPromises.get(cacheKey);
+  if (!promise) {
+    promise = (async () => {
       // 沒裝這個套件時，錯誤只會在真的要用 Bedrock 時才出現。
       const mod = (await loadModule('@anthropic-ai/bedrock-sdk')) as {
-        AnthropicBedrockMantle: new (opts: { awsRegion: string }) => MantleClient;
+        AnthropicBedrock: new (opts: { awsRegion: string }) => BedrockClient;
+        AnthropicBedrockMantle: new (opts: { awsRegion: string }) => BedrockClient;
       };
-      return new mod.AnthropicBedrockMantle({ awsRegion: region });
+      const Client =
+        endpoint === 'mantle'
+          ? mod.AnthropicBedrockMantle
+          : mod.AnthropicBedrock;
+      return new Client({ awsRegion: region });
     })();
+    clientPromises.set(cacheKey, promise);
   }
-  return clientPromise;
+  return promise;
+}
+
+/**
+ * Runtime 的 inference profile／舊式 model id 會帶地理前綴或 `:0` 版本尾碼；
+ * Mantle 新模型則是 `anthropic.claude-sonnet-5` 這種短 id。
+ */
+export function resolveBedrockEndpoint(
+  model: string,
+  endpoint: NonNullable<BedrockOptions['endpoint']>,
+): ResolvedEndpoint {
+  if (endpoint !== 'auto') return endpoint;
+  return model.includes(':') || /^(?:global|us|eu|jp|au)\./.test(model)
+    ? 'runtime'
+    : 'mantle';
 }
 
 const SYSTEM = [
@@ -77,6 +111,7 @@ export function createBedrockProvider(options: BedrockOptions): LlmProvider {
   const {
     region,
     model = BEDROCK_CLAUDE_MODEL,
+    endpoint = 'auto',
     effort = 'low',
     // 思考 token 和回覆 token 共用 max_tokens，所以要留足空間。
     maxTokens = 4096,
@@ -85,16 +120,21 @@ export function createBedrockProvider(options: BedrockOptions): LlmProvider {
   return {
     name: 'bedrock',
     async complete({ question, context, signal }) {
-      const client = await getClient(region);
+      const resolvedEndpoint = resolveBedrockEndpoint(model, endpoint);
+      const client = await getClient(region, resolvedEndpoint);
 
-      const response = await client.messages.create({
-        model,
-        max_tokens: maxTokens,
-        system: SYSTEM,
-        output_config: { effort },
-        messages: [{ role: 'user', content: buildPrompt(question, context) }],
-        ...(signal ? { signal } : {}),
-      });
+      const response = await client.messages.create(
+        {
+          model,
+          max_tokens: maxTokens,
+          system: SYSTEM,
+          // `output_config.effort` 是 Mantle 新模型的參數；Runtime 舊模型不帶，
+          // 避免 Sonnet 4.5 因未知欄位拒絕請求。
+          ...(resolvedEndpoint === 'mantle' ? { output_config: { effort } } : {}),
+          messages: [{ role: 'user', content: buildPrompt(question, context) }],
+        },
+        signal ? { signal } : undefined,
+      );
 
       // 安全分類器可能擋下請求，這時 content 會是空的。
       // 先檢查 stop_reason 再讀 content，不要無條件取 content[0]。

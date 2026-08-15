@@ -36,6 +36,7 @@ import {
   UNFILED,
 } from '../src/index.js';
 import { DEMO_MEETINGS } from '../src/core/seed.js';
+import { resolveBedrockEndpoint } from '../src/providers/bedrock.js';
 import type { S3ClientLike } from '../src/index.js';
 import type { KnowledgeDoc } from '../src/index.js';
 
@@ -627,6 +628,24 @@ async function main() {
 
     assert.equal(answer.engine, 'bedrock');
     assert.ok(answer.text.includes('30%'));
+  });
+
+  await check('Bedrock 依 model id 自動選 Runtime 或 Mantle', () => {
+    assert.equal(
+      resolveBedrockEndpoint(
+        'us.anthropic.claude-sonnet-4-5-20250929-v1:0',
+        'auto',
+      ),
+      'runtime',
+    );
+    assert.equal(
+      resolveBedrockEndpoint('anthropic.claude-sonnet-5', 'auto'),
+      'mantle',
+    );
+    assert.equal(
+      resolveBedrockEndpoint('anthropic.claude-sonnet-5', 'runtime'),
+      'runtime',
+    );
   });
 
   console.log('\n儲存層');
