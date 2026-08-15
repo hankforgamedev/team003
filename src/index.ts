@@ -28,12 +28,21 @@ export type {
 } from './core/meeting.js';
 export { formatBudget, looksLikeMeetingJson } from './core/meeting.js';
 
-export type { KnowledgeStore } from './core/store.js';
+export type { KnowledgeStore, Snapshot } from './core/store.js';
 export {
+  BaseStore,
   createDefaultStore,
   LocalStorageStore,
   MemoryStore,
+  parseSnapshot,
 } from './core/store.js';
+
+/**
+ * S3 儲存層 —— 「AWS 的 localStorage」。
+ * 只能在伺服器端用，而且要另外安裝 `@aws-sdk/client-s3`。
+ */
+export type { S3ClientLike, S3StoreOptions } from './aws/s3-store.js';
+export { S3Store } from './aws/s3-store.js';
 
 export {
   activeKinds,
@@ -88,4 +97,10 @@ export {
 export type { AskOptions, LlmProvider } from './core/qa.js';
 export { ask, buildPrompt, extractiveAnswer } from './core/qa.js';
 
-export { DEMO_MEETING, DEMO_QUESTIONS, isEmpty, seed } from './core/seed.js';
+export {
+  DEMO_MEETING,
+  DEMO_MEETINGS,
+  DEMO_QUESTIONS,
+  isEmpty,
+  seed,
+} from './core/seed.js';

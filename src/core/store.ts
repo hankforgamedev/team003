@@ -28,12 +28,28 @@ export interface KnowledgeStore {
   clear(): Promise<void>;
 }
 
-interface Snapshot {
+/** 整個知識庫的一包狀態。所有實作都是讀一包、寫一包。 */
+export interface Snapshot {
   docs: KnowledgeDoc[];
   emptyFolders: string[];
 }
 
-const EMPTY: Snapshot = { docs: [], emptyFolders: [] };
+export const EMPTY: Snapshot = { docs: [], emptyFolders: [] };
+
+/** 把來路不明的 JSON 收斂成合法 Snapshot。壞掉時回空的，不讓知識庫開不起來。 */
+export function parseSnapshot(raw: string): Snapshot {
+  try {
+    const parsed = JSON.parse(raw) as Partial<Snapshot>;
+    return {
+      docs: Array.isArray(parsed.docs) ? parsed.docs : [],
+      emptyFolders: Array.isArray(parsed.emptyFolders)
+        ? parsed.emptyFolders
+        : [],
+    };
+  } catch {
+    return EMPTY;
+  }
+}
 
 /** 把輸入補齊成完整的 KnowledgeDoc。 */
 function materialize(
@@ -67,7 +83,13 @@ function dedupe(tags: string[]): string[] {
  * 共用的實作骨架。子類別只要提供讀寫整份快照的方法，
  * 其餘的 CRUD 語意（補 id、正規化路徑、去重標籤）都在這裡統一處理。
  */
-abstract class BaseStore implements KnowledgeStore {
+/**
+ * 共用的讀改寫邏輯。子類別只要實作「怎麼讀一包、怎麼寫一包」。
+ *
+ * 匯出是為了讓 `S3Store` 之類的雲端實作可以沿用同一套語意 ——
+ * 8 個方法的行為在哪個後端都一樣，換 store 不會改變業務邏輯。
+ */
+export abstract class BaseStore implements KnowledgeStore {
   protected abstract read(): Promise<Snapshot>;
   protected abstract write(snapshot: Snapshot): Promise<void>;
 
@@ -171,20 +193,8 @@ export class LocalStorageStore extends BaseStore {
 
   protected async read(): Promise<Snapshot> {
     if (typeof localStorage === 'undefined') return EMPTY;
-    try {
-      const raw = localStorage.getItem(this.key);
-      if (!raw) return EMPTY;
-      const parsed = JSON.parse(raw) as Partial<Snapshot>;
-      return {
-        docs: Array.isArray(parsed.docs) ? parsed.docs : [],
-        emptyFolders: Array.isArray(parsed.emptyFolders)
-          ? parsed.emptyFolders
-          : [],
-      };
-    } catch {
-      // 資料壞掉時退回空的，不要讓整個知識庫開不起來。
-      return EMPTY;
-    }
+    const raw = localStorage.getItem(this.key);
+    return raw ? parseSnapshot(raw) : EMPTY;
   }
 
   protected async write(snapshot: Snapshot): Promise<void> {

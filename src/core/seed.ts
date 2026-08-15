@@ -72,32 +72,146 @@ const CATALOG = `# 服務方案與定價
 ## 適用建議
 品牌方客戶多半有長期內容需求，年約成交率明顯較高，優先推年約。`;
 
-/** 對應使用者提供的 pipeline 輸出格式。 */
-const DEMO_MEETING: MeetingJson = {
-  meeting_id: 'm_001',
-  meeting_date: '2026-08-14',
-  company: '沐日食品',
-  contact_name: '張怡君',
-  contact_role: '行銷經理',
-  customer_type: '品牌方',
-  stage: '提案中',
-  plan: '年約',
-  need: '社群代操，需含內容拍攝',
-  budget: 1200000,
-  budget_confidence: '推估',
-  timeline: null,
-  objection: '擔心交接空窗期過長',
-  decision_maker: { name: null, role: '老闆', attended: false },
-  next_action: '三天內寄送含拍攝的年約版本報價',
-  follow_up_raw: '下週三',
-  follow_up_date: '2026-08-19',
-  quotes: {
-    budget: '我們今年這塊大概抓一百二左右',
-    objection: '光是交接就搞了快三個月',
-    plan: '年約我是可以接受啦',
-    decision_maker: '還是要給我們老闆看過才能定',
+/**
+ * 五筆會議測資，對應 pipeline（語音 → 逐字稿 → 抽取）的輸出格式。
+ *
+ * 刻意涵蓋不同情境，讓 demo 時「跑進來」之後看得到差異：
+ *   m_001 資料完整、有異議、決策者未出席
+ *   m_002 決策者有出席、預算是字串而非數字
+ *   m_003 沒有異議、時程明確
+ *   m_004 **抽取結果稀疏** —— 只有公司和需求，其餘欄位 AI 抽不到
+ *   m_005 已成交、需求最單純
+ *
+ * m_004 是最重要的一筆：它會被歸到資料夾（公司名一定有），
+ * 但產不出任何標籤 —— 這正好示範兩套分類系統是獨立的，
+ * 而且這種「AI 只抽到一半」在真實 pipeline 裡很常見。
+ */
+const DEMO_MEETINGS: MeetingJson[] = [
+  {
+    meeting_id: 'm_001',
+    meeting_date: '2026-08-14',
+    company: '沐日食品',
+    contact_name: '張怡君',
+    contact_role: '行銷經理',
+    customer_type: '品牌方',
+    stage: '提案中',
+    plan: '年約',
+    need: '社群代操，需含內容拍攝',
+    budget: 1200000,
+    budget_confidence: '推估',
+    timeline: null,
+    objection: '擔心交接空窗期過長',
+    decision_maker: { name: null, role: '老闆', attended: false },
+    next_action: '三天內寄送含拍攝的年約版本報價',
+    follow_up_raw: '下週三',
+    follow_up_date: '2026-08-19',
+    quotes: {
+      budget: '我們今年這塊大概抓一百二左右',
+      objection: '光是交接就搞了快三個月',
+      plan: '年約我是可以接受啦',
+      decision_maker: '還是要給我們老闆看過才能定',
+    },
   },
-};
+  {
+    meeting_id: 'm_002',
+    meeting_date: '2026-08-12',
+    company: '恆昌五金',
+    contact_name: '林建良',
+    contact_role: '業務副理',
+    customer_type: '經銷商',
+    stage: '議價中',
+    plan: '月約',
+    need: '通路端的產品education內容，先從三支短影音試水溫',
+    // 預算抽成字串（客戶只說了模糊數字），格式化要能處理。
+    budget: '每月五萬上下',
+    budget_confidence: '客戶自述',
+    timeline: '九月中要上檔',
+    objection: '覺得月約單價比同業高',
+    decision_maker: { name: '林建良', role: '業務副理', attended: true },
+    next_action: '整理同業比較表，說明含拍攝的總持有成本',
+    follow_up_raw: '這禮拜五前',
+    follow_up_date: '2026-08-21',
+    quotes: {
+      budget: '一個月五萬上下我還可以自己決定',
+      objection: '你們單價比我問的另外兩家都高欸',
+      plan: '先月約做三支看看效果啦',
+      decision_maker: '這個額度我簽就可以了',
+    },
+  },
+  {
+    meeting_id: 'm_003',
+    meeting_date: '2026-08-11',
+    company: '青禾生技',
+    contact_name: '吳雅玲',
+    contact_role: '品牌總監',
+    customer_type: '品牌方',
+    stage: '提案中',
+    plan: '年約',
+    need: '保健食品的衛教內容經營，需要能過法規審查的文案',
+    budget: 1800000,
+    budget_confidence: '明確',
+    timeline: '十月一日前要有第一波內容',
+    objection: null,
+    decision_maker: { name: '吳雅玲', role: '品牌總監', attended: true },
+    next_action: '兩週內提出含法規審查流程的年約提案',
+    follow_up_raw: '月底前',
+    follow_up_date: '2026-08-29',
+    quotes: {
+      budget: '今年這個項目編了一百八',
+      plan: '我們希望是年約，比較好排內容節奏',
+      decision_maker: '這個案子我這邊可以決定',
+    },
+  },
+  {
+    // 抽取結果稀疏：客戶只是初步詢問，AI 抽不到方案、預算、決策者。
+    meeting_id: 'm_004',
+    meeting_date: '2026-08-13',
+    company: '立盛物流',
+    contact_name: '陳柏諺',
+    contact_role: null,
+    customer_type: null,
+    stage: '初次接觸',
+    plan: null,
+    need: '想了解 B2B 產業做內容行銷有沒有意義',
+    budget: null,
+    budget_confidence: null,
+    timeline: null,
+    objection: null,
+    decision_maker: null,
+    next_action: '寄送 B2B 產業的成功案例，兩週後再約',
+    follow_up_raw: '兩週後',
+    follow_up_date: '2026-08-27',
+    quotes: {
+      need: '我們這種做物流的，做這個真的有用嗎',
+    },
+  },
+  {
+    meeting_id: 'm_005',
+    meeting_date: '2026-08-08',
+    company: '樂沐餐飲',
+    contact_name: '黃思穎',
+    contact_role: '營運經理',
+    customer_type: '連鎖品牌',
+    stage: '已成交',
+    plan: '季約',
+    need: '新店開幕的社群預熱，三家分店同步',
+    budget: 450000,
+    budget_confidence: '明確',
+    timeline: '九月一日開幕',
+    objection: null,
+    decision_maker: { name: '黃思穎', role: '營運經理', attended: true },
+    next_action: '本週內完成合約用印，排入九月檔期',
+    follow_up_raw: '本週內',
+    follow_up_date: '2026-08-15',
+    quotes: {
+      budget: '三家店加起來四十五萬沒問題',
+      plan: '就先做一季，開幕檔期最重要',
+    },
+  },
+];
+
+/** 第一筆保留具名匯出，方便單獨拿來測試或當範例。 */
+const DEMO_MEETING = DEMO_MEETINGS[0] as MeetingJson;
 
 const MEMO_PRICING = `# 2026 下半年定價調整備忘
 
@@ -194,8 +308,10 @@ export async function seed(
     } as KnowledgeDocInput);
   }
 
-  const { doc: meetingDoc } = prepareMeetingDoc(DEMO_MEETING);
-  await store.putDoc({ ...meetingDoc, source: 'seed' } as KnowledgeDocInput);
+  for (const meeting of DEMO_MEETINGS) {
+    const { doc } = prepareMeetingDoc(meeting);
+    await store.putDoc({ ...doc, source: 'seed' } as KnowledgeDocInput);
+  }
 }
 
 /** 知識庫是不是空的，UI 用來決定要不要顯示「載入示範資料」。 */
@@ -204,4 +320,4 @@ export async function isEmpty(store: KnowledgeStore): Promise<boolean> {
   return docs.length === 0;
 }
 
-export { DEMO_MEETING };
+export { DEMO_MEETING, DEMO_MEETINGS };

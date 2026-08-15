@@ -1,3 +1,4 @@
+import { loadModule } from '../core/load-module.js';
 import { buildPrompt } from '../core/qa.js';
 import type { LlmProvider } from '../core/qa.js';
 import type { Citation } from '../core/types.js';
@@ -33,20 +34,6 @@ export interface BedrockOptions {
    */
   effort?: 'low' | 'medium' | 'high';
   maxTokens?: number;
-}
-
-/**
- * 用執行期字串載入模組。
- *
- * 刻意不用字面量 specifier：那會讓 TypeScript 去靜態解析這兩個 AWS 套件，
- * 沒安裝就編譯失敗 —— 但整個模組的賣點就是「不裝 AWS SDK 也能跑」。
- * 走這條路，型別由下面的結構型別介面保證，安不安裝都不影響其他功能。
- *
- * 注意：這是**伺服器端專用**。打包工具遇到動態 specifier 會警告，
- * 這個檔案本來就不該進前端 bundle。
- */
-async function loadModule(specifier: string): Promise<unknown> {
-  return import(/* @vite-ignore */ /* webpackIgnore: true */ specifier);
 }
 
 /** SDK 的最小介面。用結構型別避免對 SDK 版本產生硬相依。 */

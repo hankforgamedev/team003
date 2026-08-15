@@ -18,6 +18,7 @@ import {
   filterByFolder,
   filterByTags,
   ingest,
+  ingestMeetings,
   isFiled,
   isTagged,
   MemoryStore,
@@ -25,12 +26,79 @@ import {
   normalizePath,
   prepareMeetingDoc,
   prepareTextDoc,
+  S3Store,
   searchDocs,
   seed,
   tokenize,
   UNFILED,
 } from '../src/index.js';
+import { DEMO_MEETINGS } from '../src/core/seed.js';
+import type { S3ClientLike } from '../src/index.js';
 import type { KnowledgeDoc } from '../src/index.js';
+
+/**
+ * 假的 S3 client：把 bucket 當成一個 Map，記錄收到的指令。
+ * 這樣不用連真的 AWS 就能驗 S3Store 的行為。
+ */
+function fakeS3(initial?: string) {
+  const objects = new Map<string, string>();
+  if (initial !== undefined) objects.set('knowledge-base.json', initial);
+  const calls: string[] = [];
+
+  const client: S3ClientLike = {
+    async send(command: unknown) {
+      const { constructor, input } = command as {
+        constructor: { name: string };
+        input: { Key: string; Body?: string };
+      };
+      const kind = constructor.name;
+      calls.push(kind);
+
+      if (kind === 'GetObjectCommand') {
+        const body = objects.get(input.Key);
+        if (body === undefined) {
+          throw Object.assign(new Error('NoSuchKey'), { name: 'NoSuchKey' });
+        }
+        return {
+          Body: { transformToString: async () => body },
+          ETag: `"${body.length}"`,
+        };
+      }
+
+      if (kind === 'PutObjectCommand') {
+        const body = input.Body ?? '';
+        objects.set(input.Key, body);
+        return { ETag: `"${body.length}"` };
+      }
+
+      throw new Error(`未預期的指令：${kind}`);
+    },
+  };
+
+  return { client, objects, calls };
+}
+
+/**
+ * S3Store 用執行期字串 import SDK，測試環境沒裝 @aws-sdk/client-s3。
+ * 這裡塞一個假的 sdk 進去，繞過載入但保留其餘所有邏輯。
+ */
+function makeS3Store(client: S3ClientLike, options: { ifMatch?: boolean } = {}) {
+  class GetObjectCommand {
+    constructor(public input: Record<string, unknown>) {}
+  }
+  class PutObjectCommand {
+    constructor(public input: Record<string, unknown>) {}
+  }
+
+  const store = new S3Store({ bucket: 'test-bucket', client, ...options });
+  // 預先填好 sdk 快取，sdk() 就不會去 import 真的套件。
+  (store as unknown as { sdkCache: unknown }).sdkCache = {
+    S3Client: class {},
+    GetObjectCommand,
+    PutObjectCommand,
+  };
+  return store;
+}
 
 /** 測試用的文件工廠。 */
 function makeDoc(overrides: Partial<KnowledgeDoc> = {}): KnowledgeDoc {
@@ -194,6 +262,38 @@ async function main() {
   });
 
   console.log('\n會議 JSON 沉澱');
+
+  await check('五筆測資都跑得進來', async () => {
+    assert.equal(DEMO_MEETINGS.length, 5);
+
+    const store = new MemoryStore();
+    const results = await ingestMeetings(store, DEMO_MEETINGS);
+    assert.equal(results.length, 5);
+
+    const docs = await store.listDocs();
+    // 每筆會議一個客戶資料夾，公司名不重複。
+    const paths = new Set(docs.map((d) => d.path));
+    assert.equal(paths.size, 5);
+  });
+
+  await check('抽取稀疏的會議：歸得了檔但標不出標籤', async () => {
+    // m_004 只有公司和需求，customer_type / plan / objection 全是 null。
+    // 這是真實 pipeline 常見的結果，也正好證明兩套分類系統是獨立的。
+    const sparse = DEMO_MEETINGS.find((m) => m.meeting_id === 'm_004');
+    assert.ok(sparse, '應該要有 m_004 這筆稀疏測資');
+
+    const { doc } = prepareMeetingDoc(sparse);
+    assert.equal(doc.path, '/客戶知識/立盛物流', '公司名一定抽得到，歸檔成立');
+    assert.deepEqual(doc.tags, [], '其餘欄位都是 null，標籤系統掛零');
+  });
+
+  await check('預算是字串時也格式化得出來', () => {
+    // m_002 的預算是「每月五萬上下」而不是數字。
+    const loose = DEMO_MEETINGS.find((m) => m.meeting_id === 'm_002');
+    assert.ok(loose);
+    const { doc } = prepareMeetingDoc(loose);
+    assert.ok(doc.body.includes('每月五萬上下'));
+  });
 
   await check('只啟用資料夾時不產生標籤', () => {
     const { doc } = prepareMeetingDoc(DEMO_MEETING, 'folder');
@@ -488,6 +588,71 @@ async function main() {
     assert.equal(second.createdAt, first.createdAt);
     assert.ok(second.updatedAt >= first.updatedAt);
     assert.equal((await store.listDocs()).length, 1, '不該變成兩筆');
+  });
+
+  await check('S3：物件不存在時視為空知識庫', async () => {
+    const { client } = fakeS3();
+    const store = makeS3Store(client);
+    // 第一次開啟時 bucket 裡什麼都沒有，不該炸掉。
+    assert.deepEqual(await store.listDocs(), []);
+  });
+
+  await check('S3：寫進去的是一個 JSON 物件', async () => {
+    const { client, objects } = fakeS3();
+    const store = makeS3Store(client);
+    await store.putDoc(makeDoc({ id: undefined, title: '報價 SOP' }));
+
+    const raw = objects.get('knowledge-base.json');
+    assert.ok(raw, '應該寫進預設 key');
+    const parsed = JSON.parse(raw) as { docs: unknown[] };
+    assert.equal(parsed.docs.length, 1);
+  });
+
+  await check('S3：讀得回自己寫的資料', async () => {
+    const { client } = fakeS3();
+    const store = makeS3Store(client);
+    const saved = await store.putDoc(
+      makeDoc({ id: undefined, title: '交接流程', tags: ['交付'] }),
+    );
+
+    const docs = await store.listDocs();
+    assert.equal(docs.length, 1);
+    assert.equal(docs[0]?.title, '交接流程');
+    assert.deepEqual((await store.getDoc(saved.id))?.tags, ['交付']);
+  });
+
+  await check('S3：壞掉的 JSON 不會讓知識庫開不起來', async () => {
+    const { client } = fakeS3('這不是 JSON {{{');
+    const store = makeS3Store(client);
+    assert.deepEqual(await store.listDocs(), []);
+  });
+
+  await check('S3：5 筆會議測資完整跑一輪', async () => {
+    const { client, objects } = fakeS3();
+    const store = makeS3Store(client);
+
+    await ingestMeetings(store, DEMO_MEETINGS);
+
+    const docs = await store.listDocs();
+    assert.equal(docs.length, 5, '五筆都要進得去');
+
+    // 存到 S3 的內容要能原封不動讀回來（序列化不掉東西）。
+    const parsed = JSON.parse(objects.get('knowledge-base.json') as string) as {
+      docs: KnowledgeDoc[];
+    };
+    assert.equal(parsed.docs.length, 5);
+    assert.ok(
+      parsed.docs.every((d) => d.path?.startsWith('/客戶知識/')),
+      '五筆都應該歸到客戶知識底下',
+    );
+  });
+
+  await check('S3：ifMatch 關閉時不帶樂觀鎖', async () => {
+    const { client, calls } = fakeS3();
+    const store = makeS3Store(client);
+    await store.putDoc(makeDoc({ id: undefined }));
+    // 讀一次、寫一次，沒有多餘往返。
+    assert.deepEqual(calls, ['GetObjectCommand', 'PutObjectCommand']);
   });
 
   await check('標籤統計依數量排序', async () => {

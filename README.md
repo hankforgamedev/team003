@@ -195,25 +195,62 @@ Bedrock 掛掉時檢索品質只是回到 BM25，不會歸零。
 
 ---
 
-## 換掉儲存層（部署到 AWS 時）
+## 儲存層
 
-`KnowledgeStore` 的**所有方法都是 async**，即使記憶體實作是同步的。
-這是刻意的：之後把 localStorage 換成 DynamoDB / RDS 時，UI 和上層邏輯一行都不用改。
+`KnowledgeStore` 只有 **8 個方法，而且全部是 async** —— 即使記憶體實作是同步的。
+這是刻意的：換後端時 UI 和上層邏輯一行都不用改。
+
+內建四個實作：
+
+| 實作 | 存在哪 | 用在什麼場合 |
+|---|---|---|
+| `LocalStorageStore` | 瀏覽器 localStorage | demo，不需要後端 |
+| `MemoryStore` | 記憶體 | 測試／SSR |
+| `S3Store` | S3 的一個 JSON 物件 | 部署到 AWS |
+| `createDefaultStore()` | 依環境自動挑 | 不想自己決定時 |
+
+### S3Store —— 「AWS 的 localStorage」
+
+整個知識庫存成 bucket 裡的**一個 JSON 物件**，讀是 GetObject、寫是 PutObject。
+跟 `LocalStorageStore` 是同一個模型，只是把瀏覽器換成 S3：
 
 ```ts
-import type { KnowledgeStore } from '@sales-next/knowledge-base';
+import { S3Store } from '@sales-next/knowledge-base';
 
-class DynamoStore implements KnowledgeStore {
-  async listDocs() { /* ... */ }
-  async putDoc(input) { /* ... */ }
-  // ... 共 8 個方法
-}
-
-<KnowledgeBase store={new DynamoStore()} />
+const store = new S3Store({ bucket: 'my-kb', region: 'ap-northeast-1' });
+<KnowledgeBase store={store} />
 ```
 
-內建三個實作：`LocalStorageStore`（瀏覽器，demo 用）、`MemoryStore`（測試／SSR）、
-`createDefaultStore()`（依環境自動挑）。
+**為什麼是 S3，不是 DynamoDB 或 RDS：** 我們的規模是幾筆到幾十筆知識，
+而且每次操作本來就要讀整包（資料夾樹和標籤統計都是全量推導的）。
+這種存取模式用物件儲存最單純 —— 不用設 schema、不用管 VPC、不用處理連線池，
+權限就是一條 IAM policy。真的長到幾千筆再換也不遲，介面不會變。
+
+需要另外安裝 SDK（lazy import，沒裝不影響其他功能）：
+
+```bash
+npm i @aws-sdk/client-s3
+```
+
+最小 IAM 權限：
+
+```json
+{
+  "Effect": "Allow",
+  "Action": ["s3:GetObject", "s3:PutObject"],
+  "Resource": "arn:aws:s3:::my-kb/knowledge-base.json"
+}
+```
+
+**注意事項：**
+
+- **只能在伺服器端用。** 憑證不能進瀏覽器 —— 在 Next.js 裡放 route handler
+  或 server action，不要放 client component。
+- **整包覆寫，後寫的贏。** 每次修改是「讀整包 → 改 → 寫整包」，
+  兩個人同時改會後者蓋掉前者。demo 和小團隊規模不會遇到；
+  真要多人同時編輯就開 `ifMatch: true`（樂觀鎖，衝突時丟錯而不是靜靜覆蓋），
+  或改成每份文件一個物件。
+- **每次修改是 2 次 S3 往返**（一讀一寫）。這個規模下無所謂。
 
 ---
 
@@ -285,7 +322,7 @@ bigram 不需要詞典就能達到堪用的中文檢索品質，很適合黑客�
 
 ## 現況
 
-已驗證（`npm test`，35 項全過）：
+已驗證（`npm test`，44 項全過）：
 
 - 路徑正規化、`null` 不會被當成根目錄、資料夾樹（含中間層不斷裂）、
   未歸檔不混進樹、搬資料夾不碰未歸檔的
@@ -300,6 +337,8 @@ bigram 不需要詞典就能達到堪用的中文檢索品質，很適合黑客�
 - 中文具名查詢、引文字元區間對得回原文、查不到不硬掰
 - provider 失敗自動降級且保留出處、provider 正常時採用其回答
 - 儲存層的 id／路徑／標籤正規化、更新語意
+- **S3Store：物件不存在視為空知識庫、寫入格式、讀寫往返、
+  壞掉的 JSON 不會開不起來、5 筆會議測資完整跑一輪**
 
 尚未在真實 AWS 環境跑過：`createBedrockProvider` 和 `createBedrockEmbedder`
 的網路呼叫路徑（型別與降級邏輯有測試，實際 Bedrock 回應沒有）。
