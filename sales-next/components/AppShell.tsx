@@ -67,12 +67,12 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex min-h-dvh">
       {/* 桌面側欄 */}
-      <aside className="fixed inset-y-0 left-0 z-30 hidden w-[228px] flex-col bg-gradient-to-b from-navy-1 to-navy-2 px-4 py-5 md:flex">
+      <aside className="fixed inset-y-0 left-0 z-30 hidden w-[228px] flex-col border-r border-white/10 bg-navy-1 px-4 py-5 md:flex">
         <Link href="/" className="mb-7 flex items-center gap-2.5 px-2">
-          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-[#4a8df8] to-[#6a5bf0] text-white shadow-lg">
+          <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary text-white">
             <Sparkles size={18} />
           </span>
-          <span className="text-lg font-black tracking-wide text-white">Sales Next</span>
+          <span className="text-lg font-black tracking-[0.04em] text-white">Sales Next</span>
         </Link>
         <nav className="flex flex-1 flex-col gap-1.5">
           {NAV.map(({ href, label, icon: Icon }) => (
@@ -100,9 +100,9 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       {/* 主內容 */}
       <div className="flex min-w-0 flex-1 flex-col md:pl-[228px]">
         {/* 頂欄 */}
-        <header className="sticky top-0 z-20 flex items-center justify-between gap-3 border-b border-line bg-bg/85 px-4 py-3 backdrop-blur md:px-8">
+        <header className="sticky top-0 z-20 flex items-center justify-between gap-3 border-b-2 border-ink/15 bg-bg/95 px-4 py-3 backdrop-blur md:px-8">
           <div className="flex items-center gap-2.5 md:hidden">
-            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-[#4a8df8] to-[#6a5bf0] text-white">
+            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-white">
               <Sparkles size={15} />
             </span>
             <span className="font-black">Sales Next</span>
@@ -113,11 +113,11 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           </div>
           <div className="flex items-center gap-2.5">
             {/* 視角切換 */}
-            <div className="flex rounded-full border border-line bg-surface p-0.5 text-xs font-medium">
+            <div className="flex rounded-full border border-ink/20 bg-surface p-0.5 text-xs font-medium">
               <button
                 onClick={() => setView("rep")}
                 className={`rounded-full px-3 py-1.5 transition ${
-                  view === "rep" ? "bg-primary text-white shadow" : "text-ink-2"
+                  view === "rep" ? "bg-primary text-white" : "text-ink-2"
                 }`}
               >
                 業務視角
@@ -125,7 +125,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
               <button
                 onClick={() => setView("manager")}
                 className={`rounded-full px-3 py-1.5 transition ${
-                  view === "manager" ? "bg-primary text-white shadow" : "text-ink-2"
+                  view === "manager" ? "bg-primary text-white" : "text-ink-2"
                 }`}
               >
                 主管視角

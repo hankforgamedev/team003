@@ -44,7 +44,7 @@ export default function Dashboard() {
         </div>
         <Link
           href="/meetings/new"
-          className="flex items-center gap-2 rounded-full bg-gradient-to-r from-primary to-[#4a63ef] px-5 py-2.5 text-sm font-bold text-white shadow-pop transition hover:brightness-110"
+          className="flex items-center gap-2 rounded-full bg-primary px-5 py-2.5 text-sm font-bold text-white shadow-pop transition hover:brightness-110"
         >
           <Mic size={16} />
           開始新會議
@@ -102,7 +102,7 @@ export default function Dashboard() {
               </SectionTitle>
               <FunnelChart rows={f} highlightWorst />
             </Card>
-            <Card className="rise rise-3 bg-gradient-to-b from-[#f7f9ff] to-white">
+            <Card className="rise rise-3 bg-primary-soft/35">
               <SectionTitle>
                 <span className="flex items-center gap-1.5">
                   <Sparkles size={15} className="text-primary" /> AI 洞察

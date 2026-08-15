@@ -494,7 +494,7 @@ export default function NewMeetingPage() {
             onClick={startDemo}
             className="card group flex flex-col items-start gap-2 p-5 text-left transition hover:border-primary/50 hover:shadow-pop"
           >
-            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-[#4a63ef] text-white">
+            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-white">
               <PlayCircle size={20} />
             </span>
             <span className="font-bold">載入示範會議</span>
@@ -670,7 +670,7 @@ export default function NewMeetingPage() {
             )}
           </Card>
 
-          <Card className="border-primary/25 bg-gradient-to-b from-[#f7f9ff] to-white">
+          <Card className="border-primary/25 bg-primary-soft/35">
             <div className="mb-2.5 flex items-center gap-1.5 text-sm font-bold">
               <Sparkles size={15} className="text-primary" /> Next Best Action
               {nba && <Chip tone="blue">{nba.aiMode === "rules+llm" ? "顧問規則＋LLM" : "顧問規則引擎"}</Chip>}

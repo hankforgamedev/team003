@@ -8,8 +8,8 @@ import { useState } from "react";
 import { FunnelRow } from "@/lib/data/analytics";
 import { STAGE_LABEL } from "@/lib/types";
 
-const FUNNEL_COLORS = ["#16308f", "#2456e6", "#4d82f3", "#8fb3f9"];
-const WON_COLOR = "#0e9f6e";
+const FUNNEL_COLORS = ["#003153", "#335a75", "#668294", "#99aab5"];
+const WON_COLOR = "#246b50";
 
 export function FunnelChart({ rows, highlightWorst }: { rows: FunnelRow[]; highlightWorst?: boolean }) {
   const max = rows[0]?.count || 1;
@@ -62,7 +62,7 @@ export function HBar({
   label,
   value,
   max,
-  color = "#2456e6",
+  color = "#003153",
   fmt,
 }: {
   label: string;
@@ -74,7 +74,7 @@ export function HBar({
   return (
     <div className="flex items-center gap-3">
       <div className="w-36 shrink-0 truncate text-xs font-medium text-ink-2">{label}</div>
-      <div className="h-5 flex-1 overflow-hidden rounded-md bg-[#eef1f8]">
+      <div className="h-5 flex-1 overflow-hidden rounded-md bg-[#e8e8e8]">
         <div
           className="flex h-full items-center rounded-md pl-2 transition-all duration-500"
           style={{ width: `${Math.max(4, (value / (max || 1)) * 100)}%`, background: color }}
@@ -105,14 +105,14 @@ export function TrendChart({
       <svg viewBox={`0 0 ${W} ${H}`} className="w-full" role="img" aria-label="近六個月新增與成交趨勢">
         {[0, 0.5, 1].map((f) => (
           <g key={f}>
-            <line x1={P.l} x2={W - P.r} y1={y(max * f)} y2={y(max * f)} stroke="#e4e9f4" strokeWidth="1" />
-            <text x={P.l - 6} y={y(max * f) + 4} textAnchor="end" fontSize="10" fill="#7484a2" className="num">
+            <line x1={P.l} x2={W - P.r} y1={y(max * f)} y2={y(max * f)} stroke="#d2d2d2" strokeWidth="1" />
+            <text x={P.l - 6} y={y(max * f) + 4} textAnchor="end" fontSize="10" fill="#707070" className="num">
               {Math.round(max * f)}
             </text>
           </g>
         ))}
-        <path d={path("created")} fill="none" stroke="#2456e6" strokeWidth="2" strokeLinecap="round" />
-        <path d={path("won")} fill="none" stroke="#0e9f6e" strokeWidth="2" strokeLinecap="round" />
+        <path d={path("created")} fill="none" stroke="#003153" strokeWidth="2" strokeLinecap="round" />
+        <path d={path("won")} fill="none" stroke="#246b50" strokeWidth="2" strokeLinecap="round" />
         {data.map((d, i) => (
           <g key={i}>
             <rect
@@ -125,11 +125,11 @@ export function TrendChart({
               onMouseLeave={() => setHover(null)}
             />
             {hover === i && (
-              <line x1={x(i)} x2={x(i)} y1={P.t} y2={H - P.b} stroke="#a9b6cf" strokeDasharray="3 3" />
+              <line x1={x(i)} x2={x(i)} y1={P.t} y2={H - P.b} stroke="#999999" strokeDasharray="3 3" />
             )}
-            <circle cx={x(i)} cy={y(d.created)} r={hover === i ? 4.5 : 3} fill="#2456e6" stroke="#fff" strokeWidth="1.5" />
-            <circle cx={x(i)} cy={y(d.won)} r={hover === i ? 4.5 : 3} fill="#0e9f6e" stroke="#fff" strokeWidth="1.5" />
-            <text x={x(i)} y={H - 8} textAnchor="middle" fontSize="10" fill="#7484a2">
+            <circle cx={x(i)} cy={y(d.created)} r={hover === i ? 4.5 : 3} fill="#003153" stroke="#fff" strokeWidth="1.5" />
+            <circle cx={x(i)} cy={y(d.won)} r={hover === i ? 4.5 : 3} fill="#246b50" stroke="#fff" strokeWidth="1.5" />
+            <text x={x(i)} y={H - 8} textAnchor="middle" fontSize="10" fill="#707070">
               {d.label}
             </text>
           </g>

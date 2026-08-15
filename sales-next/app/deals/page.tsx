@@ -125,7 +125,7 @@ export default function DealsPage() {
         <div className="scroll-slim overflow-x-auto">
           <table className="w-full min-w-[980px] text-sm">
             <thead>
-              <tr className="border-b border-line bg-[#fafbfe] text-left text-[11px] font-bold uppercase tracking-wide text-muted">
+              <tr className="border-b border-line bg-bg text-left text-[11px] font-bold uppercase tracking-wide text-muted">
                 <th className="px-5 py-3">公司與窗口</th>
                 <th className="px-3 py-3">案件</th>
                 <th className="px-3 py-3">階段／預測</th>
@@ -183,7 +183,7 @@ export default function DealsPage() {
 }
 
 function Metric({ label, value, hint, accent, danger }: { label: string; value: string; hint: string; accent?: boolean; danger?: boolean }) {
-  return <div className={`card p-4 ${accent ? "border-primary/20 bg-gradient-to-br from-white to-primary-soft/55" : ""}`}><div className="text-xs font-semibold text-muted">{label}</div><div className={`num mt-1 text-2xl font-black ${danger ? "text-bad" : "text-ink"}`}>{value}</div><div className="mt-1 text-[11px] text-muted">{hint}</div></div>;
+  return <div className={`card p-4 ${accent ? "border-primary/20 bg-primary-soft/40" : ""}`}><div className="text-xs font-semibold text-muted">{label}</div><div className={`num mt-1 text-2xl font-black ${danger ? "text-bad" : "text-ink"}`}>{value}</div><div className="mt-1 text-[11px] text-muted">{hint}</div></div>;
 }
 
 function Select({ value, onChange, options, values }: { value: string; onChange: (value: string) => void; options: string[]; values: string[] }) {
