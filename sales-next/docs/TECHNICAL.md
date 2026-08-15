@@ -32,7 +32,8 @@ Audio / transcript / Taoyuan JSON
   -> lib/store.ts             # addDeal + addMeeting, persisted to localStorage
   -> lib/kb/store.ts          # sync meeting into knowledge base
   -> app/api/nba              # rules + optional LLM polish
-  -> pages                    # deal, meeting, KB, funnel, analytics
+  -> app/api/lead-discovery   # optional OpenAI web_search lead discovery
+  -> pages                    # deal, meeting, KB, leads, funnel, analytics
 ```
 
 There is no database. The browser is the workspace.
@@ -94,6 +95,7 @@ Text AI routing:
 - `app/api/extract/route.ts`: CRM JSON extraction.
 - `app/api/nba/route.ts`: optional LLM polish for NBA.
 - `app/api/kb-ask/route.ts`: knowledge-base answer generation.
+- `app/api/lead-discovery/route.ts`: public-web potential customer discovery ported from the Streamlit app.
 - `app/api/health/route.ts`: current provider readiness.
 
 Speech-to-text:
@@ -107,6 +109,17 @@ Fallback rules:
 - NBA API failure -> `lib/ai/nba-rules.ts`.
 - KB LLM failure -> root package `ask()` falls back to extractive answer with citations.
 - Audio transcription has no offline fallback; UI tells user to paste transcript or use demo meeting.
+- Lead Discovery requires OpenAI Responses `web_search`. It does not use Bedrock fallback because Bedrock has no equivalent public-web search tool in this app.
+
+## Lead Discovery
+
+The Streamlit project at `/Users/shawnlee/003/ai-sales-assistant-main` contributed the AI Potential Customer Discovery flow. In this Next app it lives at:
+
+- `app/leads/page.tsx`: browser UI, selected company, target market, max leads, local run history.
+- `app/api/lead-discovery/route.ts`: server route that builds a knowledge profile, creates three bounded search queries, runs OpenAI `web_search`, deduplicates, scores, and returns strict JSON.
+- `lib/lead/types.ts`: shared TypeScript types and JSON schemas.
+
+Clicking search on `/leads` calls the live web-search route. The old Streamlit SQLite/S3 persistence was intentionally not copied because this app has no server database or cloud persistence layer.
 
 Bedrock SDK note:
 

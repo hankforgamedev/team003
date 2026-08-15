@@ -72,6 +72,7 @@ OPENAI_MODEL=gpt-4o-mini
 | 離線抽取備援 | `lib/ai/demo-engine.ts` |
 | NBA 規則引擎 | `lib/ai/nba-rules.ts` |
 | API routes | `app/api/{transcribe,extract,nba,kb-ask,health}/route.ts` |
+| Lead Discovery | `app/leads/page.tsx`, `app/api/lead-discovery/route.ts`, `lib/lead/types.ts` |
 | 新會議 wow moment | `app/meetings/new/page.tsx` |
 | 知識庫整合 | `app/knowledge/page.tsx`, `lib/kb/*` |
 | 漏斗/分析資料 | `lib/data/analytics.ts` |
@@ -84,6 +85,7 @@ OPENAI_MODEL=gpt-4o-mini
 - Server 文字生成/JSON 生成走 `lib/ai/llm.ts`，由 request body 的 `provider` 決定 Bedrock/OpenAI。
 - `/api/health?provider=bedrock|openai` 回傳目前 provider 是否可用。
 - `/api/transcribe` 只處理 Whisper；Bedrock 不負責語音轉文字。
+- `/api/lead-discovery` 是從 Streamlit `ai-sales-assistant-main` 移植的公開網路潛在客戶探索。它需要 OpenAI Responses `web_search`，不走 Bedrock fallback，失敗時只影響 `/leads`。
 - `@sales-next/knowledge-base` 的 `LlmProvider.name` 型別目前固定是 `"bedrock"`；`lib/kb/provider.ts` 裡 name 保持 `"bedrock"` 是為了相容，實際 provider 由 `/api/kb-ask` 的 body 決定。
 - Bedrock SDK 要 lazy/runtime import，避免 Next build 時被 Webpack 靜態解析壞掉。
 
@@ -91,6 +93,7 @@ OPENAI_MODEL=gpt-4o-mini
 
 - 分析數字只能從 `deals` / `meetings` 推導，主要在 `lib/data/analytics.ts`。不要寫死統計數字。
 - 新增會議時要同時 `addDeal()`、`addMeeting()`，meeting 會透過 store side effect 同步到知識庫。
+- 內建 CRM/會議示範資料目前是 30 筆；潛在客戶搜尋走 `/api/lead-discovery` 的 live web_search 路徑，不要混進 CRM seed。
 - `Meeting.pipeline` 要保留每場會議的 pipeline snapshot，會議詳情頁會顯示。
 - 桃園新竹輸入格式可以是逐字稿，也可以是 JSON；統一在 `lib/pipeline.ts` normalize 成 `MeetingExtraction`。
 - 新會議頁的 `meeting_id` 自動生成，`meeting_date`、`company`、`contact_name` 由使用者填，存檔時要覆蓋 AI 抽取結果。
@@ -115,6 +118,7 @@ OPENAI_MODEL=gpt-4o-mini
 - 要改 CRM 欄位：先改 `lib/types.ts`，再改 `app/api/extract/route.ts` schema、`lib/pipeline.ts` normalizer、`app/meetings/new/page.tsx` 顯示與 deal mapping。
 - 要改 provider：改 `lib/ai/provider-config.ts` 和 `lib/ai/llm.ts`，保持 fallback。
 - 要改知識庫：先看 repo root `src/core/*` 與 app 內 `lib/kb/*`，不要把 AWS key 帶到 client bundle。
+- 要開 LINE 常駐資料庫或潛在用戶資料庫：先讀 `PLAN.md`，照裡面的資料邊界與 store interface 開。
 
 ## 完成前檢查
 

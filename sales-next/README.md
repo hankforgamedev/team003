@@ -12,6 +12,7 @@
 
 - 先讀 [`CLAUDE.md`](./CLAUDE.md)
 - 技術細節看 [`docs/TECHNICAL.md`](./docs/TECHNICAL.md)
+- 後續新功能規劃看 [`PLAN.md`](./PLAN.md)
 - 重建/比賽日流程看 [`REBUILD-PLAYBOOK.md`](./REBUILD-PLAYBOOK.md)
 
 ---
